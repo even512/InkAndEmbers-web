@@ -6,6 +6,7 @@ import { fmtNumber, fmtDuration } from "../core/i18n.mjs";
 import { ct, ctn, hasCt, difficultyName, standingName } from "./texts.mjs";
 import { TIER_ORDER, TOUGH_DEATHS, MEDAL_STEPS, SEALS } from "./medals.mjs";
 import { icon, portraitImg, classColorClass } from "../ui/identity.mjs";
+import { shownIdentity, shownJournal, playerName, extrasOf } from "../ui/names.mjs";
 import { XP_SOURCES } from "./stats.mjs";
 import { dungeonDetail, dungeonGroup } from "./dungeons.mjs";
 
@@ -100,7 +101,8 @@ function pagedList(doc, lang, tag, cls, items, render, step = PAGE_STEP) {
 
 function profilePage(doc, lang, m) {
   const p = m.profile;
-  const name = clean(p.name, 40) || "?";
+  const who0 = shownIdentity(p, lang);
+  const name = clean(who0.name, 60) || "?";
   const clsName = p.cls ? clean(p.cls, 40) : null;
   const clsTag = clsName ? el(doc, "span", classColorClass(p.classFile) || "cls", clsName) : null;
   const who = [p.race ? clean(p.race, 40) : null, clsTag].filter(Boolean).flatMap((x, i) => (i ? [" · ", x] : [x]));
@@ -114,7 +116,7 @@ function profilePage(doc, lang, m) {
   row(ct(lang, "pfClass"), clsName ? el(doc, "span", classColorClass(p.classFile) || "cls", clsName) : null);
   row(ct(lang, "pfFaction"), p.faction ? clean(p.faction, 40) : null);
   row(ct(lang, "pfLevel"), String(p.level));
-  row(ct(lang, "pfRealm"), p.realm ? clean(p.realm, 40) : null);
+  row(ct(lang, p.forever ? "pfRuleset" : "pfRealm"), who0.place ? clean(who0.place, 40) : null);
   row(ct(lang, p.playedExact ? "pfPlayed" : "pfPlayedApprox"), p.played !== null ? fmtDuration(lang, p.played) : ct(lang, "unknown"));
   row(ct(lang, "pfSince"), okTime(p.since) ? dateText(lang, p.since) : ct(lang, "unknown"));
   row(ct(lang, "pfLast"), okTime(p.lastT) ? dateText(lang, p.lastT) : null);
@@ -357,6 +359,12 @@ function whenText(lang, run) {
   return dateTimeText(lang, run.t0) + " – " + dateTimeText(lang, run.t1);
 }
 
+// Forever-Datei? (Mitspielernamen werden dort als "Vorname Nachname" gezeigt); je Kontext einmal bestimmt
+function foreverCtx(ctx) {
+  if (ctx.forever === undefined) ctx.forever = extrasOf(ctx.char).forever;
+  return ctx.forever;
+}
+
 function dungeonBody(doc, lang, ctx, run) {
   const d = dungeonDetail(ctx, run);
   const body = el(doc, "div", "dg-body");
@@ -398,7 +406,7 @@ function dungeonBody(doc, lang, ctx, run) {
     body.appendChild(
       el(doc, "ul", "dg-group", group.map((g) =>
         el(doc, "li", "dg-member",
-          el(doc, "span", "dg-member-name", clean(g.name, 50)),
+          el(doc, "span", "dg-member-name", clean(playerName(g.name, foreverCtx(ctx)), 60)),
           el(doc, "span", "dg-member-sub", [g.cls ? el(doc, "span", classColorClass(g.cls) || "cls", classText(lang, g.cls)) : null, g.level ? ct(lang, "dgLv", g.level) : null, g.seconds ? fmtDuration(lang, g.seconds) : null].filter(Boolean).flatMap((x, i) => (i ? [" · ", x] : [x]))),
         ))),
     );
@@ -424,7 +432,7 @@ function dungeonBody(doc, lang, ctx, run) {
     const list = el(doc, "ul", "dg-loot");
     for (const e of d.loot) {
       const name = e.name ? clean(e.name, 70) : ct(lang, "dgItemFallback", e.itemID);
-      const sub = [e.who ? clean(e.who, 50) : ct(lang, "dgYou"), e.cls ? classText(lang, e.cls) : null, e.roll && hasCt(lang, "roll." + e.roll) ? ct(lang, "roll." + e.roll) : null].filter(Boolean).join(" · ");
+      const sub = [e.who ? clean(playerName(e.who, foreverCtx(ctx)), 60) : ct(lang, "dgYou"), e.cls ? classText(lang, e.cls) : null, e.roll && hasCt(lang, "roll." + e.roll) ? ct(lang, "roll." + e.roll) : null].filter(Boolean).join(" · ");
       list.appendChild(
         el(doc, "li", "dg-item " + (QUALITY_CLASS[e.quality] || ""),
           el(doc, "span", "dg-mark", "◆"),
@@ -579,7 +587,7 @@ export function renderChronicle(doc, { model, journal, lang }) {
     dungeons: dungeonsPage(doc, lang, model),
     deaths: deathsPage(doc, lang, model),
   };
-  const core = bookPages(doc, journal, lang);
+  const core = bookPages(doc, shownJournal(journal, lang), lang);
   const sections = [
     ["profile", ct(lang, "navProfile"), [own.profile]],
     ["medals", ct(lang, "navMedals"), [own.medals]],

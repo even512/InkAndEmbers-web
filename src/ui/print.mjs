@@ -5,7 +5,7 @@
 // Ende ein Netz über alle Textknoten des Buches.
 // Sicherheit: nur DOM über el()/Textknoten; Karten-Standbilder entstehen im Canvas (drawFrame, Texte durch safeText) und
 // werden als blob:-URL eingebunden (img-src blob: laut CSP); Kartenbilder nur aus maps/ der eigenen Seite.
-import { buildJournal } from "../core/journal-model.mjs";
+import { buildJournalX as buildJournal, shownIdentity } from "./names.mjs";
 import { fmtDate } from "../core/i18n.mjs";
 import { el } from "../core/render.mjs";
 import { createAnonymizer, anonymizeChar, anonymizeModel, scrubJourney, createRenumberer } from "../share/anonymize.mjs";
@@ -162,7 +162,8 @@ function metaLine(doc, lang, j) {
   if (Number.isFinite(j.level)) parts.push(t(lang, "charSummaryLevel", j.level));
   if (j.race) parts.push(safeText(j.race, 40));
   if (j.cls) parts.push(classSpan(doc, j.classFile, safeText(j.cls, 40)));
-  if (j.realm) parts.push(safeText(j.realm, 40));
+  const place = shownIdentity(j, lang).place;
+  if (place) parts.push(safeText(place, 40));
   const out = [];
   parts.forEach((p, i) => {
     if (i) out.push(" · ");
@@ -179,7 +180,7 @@ function titlePage(doc, lang, P, tripFigure, info) {
     el(doc, "div", "print-who",
       portraitImg(doc, info, "print-portrait", 96),
       el(doc, "div", "print-who-text",
-        el(doc, "h1", "print-name", safeText(j.name, 40)),
+        el(doc, "h1", "print-name", safeText(shownIdentity(j, lang).name, 60)),
         el(doc, "p", "print-meta", metaLine(doc, lang, j)),
         span ? el(doc, "p", "print-span", span) : null,
       ),

@@ -9,6 +9,7 @@ EveNChronicleDB = {
 ["info"] = {
 ["name"] = "<script>alert(1)</script>\u{202E}Mal\u{200B}ory",
 ["realm"] = "<img src=x onerror=\"alert(2)\">",
+["project"] = 1,
 ["race"] = "<b>Mensch</b>",
 ["class"] = "\u{2066}Paladin\u{2069}",
 ["classFile"] = "PALADIN",

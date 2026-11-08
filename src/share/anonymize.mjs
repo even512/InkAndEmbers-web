@@ -49,10 +49,13 @@ export function pseudonym(lang, n) {
 // Eindeutig kein Spielername, sondern eine Spielfigur der Welt: Spielernamen enthalten nie Leerzeichen (nur mit "-Realm"
 // dahinter wäre es ein Spieler), und „Auktionshaus“/„Doktor“ & Co. nennt kein Spieler so. Im Zweifel wird ersetzt.
 const NPC_WORDS = /(^|[\s-])(auktionshaus|auction house|doktor|doctor|arzt)($|[\s-])/i;
-export function looksLikeNpc(name) {
+// known (optional, Set/Map): schon als Spieler bekannte Schreibweisen, z. B. der Vollname "Vorname Nachname" zu "Vorname-Nachname"
+// (Forever zeigt ihn so an); ein solcher Name mit Leerzeichen ist dann ein Spieler und keine Spielfigur der Welt.
+export function looksLikeNpc(name, known) {
   if (typeof name !== "string") return false;
   const s = name.trim();
   if (!s) return false;
+  if (known && typeof known.has === "function" && known.has(s)) return false;
   if (/^\S+-\S+$/.test(s)) return false; // Name-Realm: Spieler
   if (NPC_WORDS.test(s)) return true;
   if (/\s/.test(s)) return !/^\S+\s.*-\S+$/.test(s); // Leerzeichen: Figur der Welt, außer mit Realm hinten
@@ -66,11 +69,17 @@ function cleanName(raw) {
   return s && s !== "?" ? s : null;
 }
 
-// "Name-Realm" -> ["Name-Realm", "Name"]; der Grundname allein wird mit erfasst (Anzeigen ohne Realm)
+// "Name-Realm" -> ["Name-Realm", "Name Realm", "Name"]; der Grundname allein wird mit erfasst (Anzeigen ohne Realm), ebenso
+// die Anzeigeform "Vorname Nachname" (Forever), wenn der Teil nach "-" ein Nachname ist (keine Ziffern/Leerzeichen, kein Shard).
+// Der Grundname steht immer zuletzt.
 function nameForms(name) {
   const out = [name];
   const dash = name.indexOf("-");
-  if (dash > 0) out.push(name.slice(0, dash));
+  if (dash > 0) {
+    const rest = name.slice(dash + 1);
+    if (rest !== "" && !/[\d\s]/.test(rest)) out.push(name.slice(0, dash) + " " + rest);
+    out.push(name.slice(0, dash));
+  }
   return out;
 }
 
@@ -152,7 +161,7 @@ export function createAnonymizer(char, lang = "de") {
   let extra = byForm.size;
   const alias = (raw) => {
     const c = cleanName(raw);
-    if (!c || looksLikeNpc(c)) return raw;
+    if (!c || looksLikeNpc(c, byForm)) return raw;
     const hit = byForm.get(c) || byForm.get(nameForms(c).pop());
     if (hit) return hit;
     // unbekannter Name in einem Namensfeld: trotzdem ersetzen (lieber ein Gefährte zu viel als ein Name zu viel)

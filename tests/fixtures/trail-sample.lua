@@ -8,6 +8,7 @@ EveNChronicleDB = {
 ["info"] = {
 ["name"] = "Wegfinder",
 ["realm"] = "Testreich",
+["project"] = 1,
 ["race"] = "Mensch",
 ["class"] = "Krieger",
 ["classFile"] = "WARRIOR",

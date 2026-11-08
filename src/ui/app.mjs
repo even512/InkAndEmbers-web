@@ -2,7 +2,7 @@
 // Läuft nur im Browser; nichts verlässt den Rechner (die CSP der Seite verbietet jede Anfrage).
 // Sicherheit: Alles aus der Datei geht nur über Textknoten (createTextNode via el()) hinaus; kein HTML-String irgendwo.
 // Bilder kommen nur aus public/img/ mit festen Namen (identity.mjs), nie aus Dateidaten.
-import { buildJournal } from "../core/journal-model.mjs";
+import { buildJournalX as buildJournal, withExtras, shownIdentity } from "./names.mjs";
 import { fmtNumber } from "../core/i18n.mjs";
 import { el } from "../core/render.mjs";
 import { t } from "./texts.mjs";
@@ -202,7 +202,7 @@ export function startApp(doc, win) {
     try {
       const opened = await loadSvFile(file);
       if (token !== loadToken) return; // eine neuere Auswahl hat übernommen
-      state.file = { name: opened.name, db: opened.db, characters: opened.characters, schemaWarning: opened.schemaWarning };
+      state.file = { name: opened.name, db: opened.db, characters: withExtras(opened.db, opened.characters), schemaWarning: opened.schemaWarning };
       // zuletzt gespielter Charakter zuerst (listCharacters sortiert nach lastSeen)
       selectCharacter(opened.characters.length > 0 ? opened.characters[0].guid : null);
       applyPreset(opened.characters);
@@ -287,9 +287,10 @@ export function startApp(doc, win) {
   // Auswahlfeld mit kurzer, vollständiger Beschriftung (Name – Realm, Stufe); keine Abschneidung
   function charLabel(c) {
     // Stufe vor dem Realm: das geschlossene Auswahlfeld kürzt hinten, und der Realm ist der längste Teil
-    let label = safeText(c.name, 40);
+    const who = shownIdentity(c, state.lang);
+    let label = safeText(who.name, 60);
     if (c.level !== null) label += " – " + t(state.lang, "charLevel", c.level);
-    if (c.realm) label += (c.level !== null ? " · " : " – ") + safeText(c.realm, 40);
+    if (who.place) label += (c.level !== null ? " · " : " – ") + safeText(who.place, 40);
     return label;
   }
 
@@ -331,7 +332,8 @@ export function startApp(doc, win) {
     if (c.level !== null) parts.push(t(state.lang, "charSummaryLevel", c.level));
     if (c.race) parts.push(safeText(c.race, 40));
     if (c.cls) parts.push(classSpan(doc, c.classFile, safeText(c.cls, 40)));
-    if (c.realm) parts.push(safeText(c.realm, 40));
+    const place = shownIdentity(c, state.lang).place;
+    if (place) parts.push(safeText(place, 40));
     const out = [];
     parts.forEach((p, i) => {
       if (i) out.push(" · ");
@@ -346,7 +348,7 @@ export function startApp(doc, win) {
       list.appendChild(button("char-card", [
         portraitImg(doc, charInfo(c), "char-portrait", 56),
         el(doc, "span", "char-text",
-          el(doc, "span", "char-name", safeText(c.name, 40)),
+          el(doc, "span", "char-name", safeText(shownIdentity(c, state.lang).name, 60)),
           el(doc, "span", "char-meta", metaLine(c)),
           el(doc, "span", "char-realm", t(state.lang, "charLines", fmtNumber(state.lang, c.lines))),
         ),
@@ -423,7 +425,7 @@ export function startApp(doc, win) {
     return el(doc, "section", "hero",
       portraitImg(doc, charInfo(c), "portrait", 80),
       el(doc, "div", "hero-who",
-        el(doc, "h1", "journal-name", safeText(c.name, 40)),
+        el(doc, "h1", "journal-name", safeText(shownIdentity(c, state.lang).name, 60)),
         el(doc, "p", "hero-meta", metaLine(c)),
       ),
       charSelect(),
@@ -518,7 +520,7 @@ export function startApp(doc, win) {
   function render() {
     doc.documentElement.setAttribute("lang", state.lang);
     const c = state.journal ? currentCharacter() : null;
-    doc.title = c ? t(state.lang, "journalOf") + " " + safeText(c.name, 40) : t(state.lang, "siteTitle");
+    doc.title = c ? t(state.lang, "journalOf") + " " + safeText(shownIdentity(c, state.lang).name, 60) : t(state.lang, "siteTitle");
     const main = el(doc, "main", "main");
     const msgs = el(doc, "div", "wrap messages");
     if (state.error) msgs.appendChild(alertBox("alert", state.error));

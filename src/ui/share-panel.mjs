@@ -3,7 +3,7 @@
 // danach Vorschau, Größe, „Teilen …“ (Web Share API, wo möglich) und immer „Herunterladen“.
 // Sicherheit: Texte nur als Textknoten; Kartenbilder nur aus maps/ der eigenen Seite; das Ergebnis bleibt im Browser
 // (Objekt-URL für Vorschau und Download, media-src/img-src blob: laut CSP). Anonymisierung im Modell vor dem Zeichnen.
-import { buildJournal } from "../core/journal-model.mjs";
+import { buildJournalX as buildJournal, shownIdentity } from "./names.mjs";
 import { el } from "../core/render.mjs";
 import { displayMap } from "../geo/map-geo.mjs";
 import { anonymizeForExport, scrubJourney } from "../share/anonymize.mjs";
@@ -268,13 +268,13 @@ export function createSharePanel(doc, win, opts) {
     const images = new Map();
     const lang = S.lang;
     if (!S.icons) S.icons = await loadIcons(win);
-    const job0 = createFrameJob({ data: d, scope: S.scope, range, images, plan, info: { charName: opts.journal && opts.journal.name, lang }, anon, baseMapID: base, icons: S.icons, restrict: Boolean(ch), scenes });
+    const job0 = createFrameJob({ data: d, scope: S.scope, range, images, plan, info: { charName: opts.journal && shownIdentity(opts.journal, lang).name, lang }, anon, baseMapID: base, icons: S.icons, restrict: Boolean(ch), scenes });
     await Promise.all(job0.mapIDs().map(async (id) => {
       const m = displayMap(id);
       images.set(id, m && m.art && m.mapID === id ? await loadImage(win, opts.imageUrls(id, lang)) : null);
     }));
     await loadFonts(doc);
-    const name = (ext) => fileName({ charName: opts.journal && opts.journal.name, scope: S.scope, epoch: job0.endEpoch, ext });
+    const name = (ext) => fileName({ charName: opts.journal && shownIdentity(opts.journal, lang).name, scope: S.scope, epoch: job0.endEpoch, ext });
     return { job: job0, plan, name };
   }
 

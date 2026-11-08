@@ -14,6 +14,7 @@ import { buildMarkers, buildChapters, buildLabels, prepareMapScene, chooseMap, c
 import { drawFrame, fitView, zoomAt, panBy, clampView, hitMarker, transformFor, visibleSpan, headAt, DEFAULT_ASPECT, ZOOM_STEP } from "../map/renderer.mjs";
 import * as PB from "../map/playback.mjs";
 import { t } from "./texts.mjs";
+import { shownIdentity } from "./names.mjs";
 import { safeText } from "./safe-text.mjs";
 import { icon } from "./identity.mjs";
 import { createSharePanel } from "./share-panel.mjs";
@@ -762,7 +763,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     clear(emptyBox);
     emptyBox.appendChild(icon(doc, "map-photo", "empty-icon", [48, 48]));
     emptyBox.appendChild(el(doc, "h3", "empty-title", t(L, "jNoTrailTitle")));
-    emptyBox.appendChild(el(doc, "p", "empty-text", t(L, "jNoTrail", safeText(journal && journal.name, 40))));
+    emptyBox.appendChild(el(doc, "p", "empty-text", t(L, "jNoTrail", safeText(journal && shownIdentity(journal, L).name, 60))));
   }
 
   // ---------------------------------------------------------------- Aufbau

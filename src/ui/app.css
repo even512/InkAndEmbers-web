@@ -31,6 +31,7 @@
 body.dragging .dropzone { border-color: var(--c-accent); background: var(--c-hover); }
 body.dragging::after { content: ""; position: fixed; inset: 0; pointer-events: none; border: 4px solid var(--c-accent); }
 .drop-hint { margin-top: var(--s-5); color: var(--c-ink-muted); overflow-wrap: anywhere; }
+.link-hint { margin-top: var(--s-4); padding: var(--s-3) var(--s-4); border-left: 4px solid var(--c-bronze); background: var(--c-hover); font-weight: 600; overflow-wrap: anywhere; }
 .privacy { margin-top: var(--s-3); padding-left: var(--s-3); border-left: 2px solid var(--c-bronze); }
 
 /* ---- Charakterwahl (Datei mit mehreren Charakteren, keiner gewählt) ---------------------------------------- */

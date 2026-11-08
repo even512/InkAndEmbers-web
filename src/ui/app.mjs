@@ -14,6 +14,7 @@ import { renderChroniclePanel } from "../chronik/index.mjs";
 import { icon, portraitImg, classSpan } from "./identity.mjs";
 import { buildPrintBook } from "./print.mjs";
 import { renderLicenses } from "./licenses.mjs";
+import { parseLinkFragment, matchLinkCharacter } from "./link-preset.mjs";
 
 const LANG_KEY = "iae-lang";
 const VIEWS = [["journey", "tabJourney", "tab-reise"], ["chronicle", "tabChronicle", "tab-chronik"]];
@@ -45,6 +46,26 @@ export function systemLang(nav) {
   return "en";
 }
 
+function readPreset(win) {
+  try {
+    return win.location ? parseLinkFragment(win.location.hash) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Fragment aus der Adresszeile nehmen (nur lokal, kein Netz)
+function clearFragment(win) {
+  try {
+    const loc = win.location;
+    if (win.history && typeof win.history.replaceState === "function" && loc && loc.hash) {
+      win.history.replaceState(null, "", (loc.pathname || "/") + (loc.search || ""));
+    }
+  } catch {
+    /* ignorieren */
+  }
+}
+
 export function startApp(doc, win) {
   const stored = readStoredLang(win);
   const state = {
@@ -61,6 +82,7 @@ export function startApp(doc, win) {
     printAnon: false, // „Andere Spieler ausblenden“ für den Druck (Standard aus)
     printing: false,
     printMsg: null, // printPreparing | printReady | printFailed
+    preset: readPreset(win), // Vorauswahl aus dem Link des Addons: { c, v } oder null
   };
   let printToken = 0;
   let printRoot = null; // Druckbuch (eigener Knoten neben #app, nur im Druck sichtbar)
@@ -152,6 +174,21 @@ export function startApp(doc, win) {
     }
   }
 
+  // Link aus dem Addon: Charakter und Ansicht vorwählen; ohne Treffer bleibt die normale Auswahl plus kurzer Hinweis
+  function applyPreset(characters) {
+    const p = state.preset;
+    if (!p) return;
+    state.preset = null;
+    clearFragment(win);
+    const guid = matchLinkCharacter(characters, p.c);
+    if (guid) {
+      selectCharacter(guid);
+      if (state.journal) state.view = p.v;
+    } else if (!state.notice) {
+      state.notice = { key: "presetNoMatch", args: [] };
+    }
+  }
+
   async function loadFile(file, extra) {
     const token = ++loadToken;
     state.page = "main";
@@ -165,6 +202,7 @@ export function startApp(doc, win) {
       state.file = { name: opened.name, db: opened.db, characters: opened.characters, schemaWarning: opened.schemaWarning };
       // zuletzt gespielter Charakter zuerst (listCharacters sortiert nach lastSeen)
       selectCharacter(opened.characters.length > 0 ? opened.characters[0].guid : null);
+      applyPreset(opened.characters);
     } catch (e) {
       if (token !== loadToken) return;
       state.error = errorMessage(e);
@@ -273,6 +311,7 @@ export function startApp(doc, win) {
     return el(doc, "section", "intro wrap no-print",
       el(doc, "h1", "intro-title", t(state.lang, "introTitle")),
       el(doc, "p", "intro-lead", t(state.lang, "siteLead")),
+      state.preset ? el(doc, "p", "link-hint", t(state.lang, "presetHint")) : null,
       el(doc, "div", "dropzone",
         icon(doc, "book-icon", "drop-icon", [48, 48]),
         el(doc, "p", "drop-title", t(state.lang, "dropTitle")),

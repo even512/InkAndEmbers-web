@@ -293,3 +293,27 @@ describe("Teilen-Panel", () => {
     v.destroy();
   });
 });
+
+describe("Anonymisierung der Chronik-Felder (W5) am echten Modell", () => {
+  it("Dungeon-Gruppe (group[].name) und Beute (loot[].who) tragen keinen Spielernamen mehr", async () => {
+    const { model, thanenOpts } = await import("./helpers/chronik-sv.mjs");
+    const { dungeonGroup, dungeonDetail } = await import("../src/chronik/dungeons.mjs");
+    const opts = thanenOpts();
+    opts.blocks = opts.blocks.map((b) => b.replace("\n1080~LT~2978~1~2~mob~~18", "\n1080~LT~2978~1~2~mob~~18\n1081~LG~2978~1~3~Zedrik-Testreich~MAGE~need"));
+    const { m } = model(opts);
+    const run = m.dungeons.runs[0];
+    const group = dungeonGroup(m.ctx, run);
+    const detail = dungeonDetail(m.ctx, run);
+    const realNames = group.map((g) => g.name);
+    expect(realNames.length).toBeGreaterThan(0);
+    const who = detail.loot.filter((e) => e.who);
+    expect(who.map((e) => e.who)).toContain("Zedrik-Testreich");
+    const anon = createAnonymizer({ info: { name: "Eigener" }, log: {} }, "de");
+    const out = anonymizeModel({ dungeons: { runs: [{ group, detail }] } }, anon);
+    const dump = JSON.stringify(out);
+    for (const n of [...realNames, "Zedrik"]) expect(dump).not.toContain(n);
+    expect(out.dungeons.runs[0].group.every((g) => /^Gefährte \d+$/.test(g.name))).toBe(true);
+    expect(out.dungeons.runs[0].detail.loot.filter((e) => e.who).every((e) => /^Gefährte \d+$/.test(e.who))).toBe(true);
+    expect(group[0].name).toBe(realNames[0]); // Original unverändert
+  });
+});

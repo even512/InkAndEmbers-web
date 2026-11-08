@@ -247,7 +247,7 @@ describe("Einbindung in die App", () => {
     return { ...env, app };
   }
 
-  it("der Reiter 'Chronik & Statistik' zeigt die Ansicht, 'Reise' bleibt Platzhalter; die Sprache wirkt auf die Ansicht", async () => {
+  it("der Reiter 'Chronik & Statistik' zeigt die Ansicht, Reise ist die Reise-Ansicht; die Sprache wirkt auf die Ansicht", async () => {
     const { app, appRoot } = await boot();
     expect(byClass(appRoot, "chron-book")).toHaveLength(0);
     findAll(appRoot, (n) => hasCls(n, "tab-btn"))[1].click();
@@ -259,7 +259,7 @@ describe("Einbindung in die App", () => {
     expect(byClass(appRoot, "chron-nav-btn")[0].textContent).toBe("Character sheet");
     findAll(appRoot, (n) => hasCls(n, "tab-btn"))[0].click();
     expect(byClass(appRoot, "chron-book")).toHaveLength(0);
-    expect(byClass(appRoot, "placeholder")).toHaveLength(1);
+    expect(byClass(appRoot, "journey-panel")).toHaveLength(1);
   });
 
   it("wechselt den Charakter und die Ansicht folgt", async () => {

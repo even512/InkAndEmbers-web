@@ -9,6 +9,8 @@ import { TEXTS } from "../src/core/i18n.mjs";
 import { CORE_FILES, withHeader, resolveSource } from "../scripts/sync-core.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
+// Zeilenenden egal (Windows-Checkout mit autocrlf)
+const lf = (s) => s.split(String.fromCharCode(13, 10)).join(String.fromCharCode(10));
 
 function walk(dir, out = []) {
   for (const n of readdirSync(dir)) {
@@ -110,9 +112,8 @@ describe("Texte", () => {
 describe("src/core ist die Kopie des Addon-Repos", () => {
   it("jede Datei trägt den Herkunftskopf und SOURCE.txt nennt den Commit", () => {
     for (const f of CORE_FILES) {
-      const text = readFileSync(join(ROOT, "src", "core", f), "utf8");
+      const text = lf(readFileSync(join(ROOT, "src", "core", f), "utf8"));
       expect(text.slice(0, 200), f).toMatch(/Herkunft: EveN_ForeverChronicle\/tools\/journal-export\/src\//);
-      expect(text.includes("\r"), f).toBe(false);
     }
     expect(readFileSync(join(ROOT, "src", "core", "SOURCE.txt"), "utf8")).toMatch(/Commit: [0-9a-f]{40}/);
   });
@@ -122,7 +123,7 @@ describe("src/core ist die Kopie des Addon-Repos", () => {
   it.skipIf(!existsSync(srcDir))("entspricht dem Stand im Nachbar-Repo (sonst: npm run sync-core)", () => {
     for (const f of CORE_FILES) {
       const expected = withHeader(f, readFileSync(join(srcDir, f), "utf8"));
-      expect(readFileSync(join(ROOT, "src", "core", f), "utf8"), f).toBe(expected);
+      expect(lf(readFileSync(join(ROOT, "src", "core", f), "utf8")), f).toBe(expected);
     }
   });
 });

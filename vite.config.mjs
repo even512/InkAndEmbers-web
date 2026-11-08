@@ -20,6 +20,8 @@ export default defineConfig({
   // relativ, damit dieselbe Ausgabe unter https://even512.github.io/InkAndEmbers-web/ und lokal läuft
   base: "./",
   plugins: [devRelaxedCsp()],
+  // GIF-Worker (src/share/gif.worker.mjs) als ES-Modul bündeln, Ausgabe unter assets/ (gleiche Herkunft, worker-src 'self')
+  worker: { format: "es" },
   build: {
     outDir: "dist",
     emptyOutDir: true,

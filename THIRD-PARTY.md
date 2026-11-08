@@ -9,14 +9,14 @@ Die Seite lädt zur Laufzeit nichts von außen: alles unten Genannte wird mit de
 | Spectral (Production Type) | SIL OFL 1.1 | `public/fonts/Spectral-*.ttf`, Text: `public/fonts/OFL-Spectral.txt` | unverändert aus dem Addon Ink & Embers |
 | Caveat (The Caveat Project Authors) | SIL OFL 1.1 | `public/fonts/Caveat-Bold.ttf`, Text: `public/fonts/OFL-Caveat.txt` | unverändert aus dem Addon Ink & Embers |
 | Blizzard-Kartenkunst (WebP je uiMap und Sprache) | © Blizzard Entertainment, nicht-kommerzielle Fan-Nutzung, keine Lizenz an Dritte | `public/maps/forever/`, Hinweis: `public/maps/LICENSE-NOTE.md` | aus dem lokalen Spielclient (`scripts/extract-maps.mjs`) |
+| Mediabunny 1.65.2 (Vanilagy) – MP4/H.264 über WebCodecs | MPL-2.0 | im Bundle `assets/index-*.js`, unverändert aus npm `mediabunny`; Text: `public/licenses/MPL-2.0-mediabunny.txt` | Quelltext: https://github.com/Vanilagy/mediabunny (Tag v1.65.2) |
+| gifenc 1.0.3 (Matt DesLauriers) – GIF-Encoder | MIT | im GIF-Worker `assets/gif.worker-*.js`, unverändert aus npm `gifenc`; Text: `public/licenses/MIT-gifenc.txt` | |
 | Parser, Modell, Texte, Darstellung | MIT (eigener Code) | `src/core/` | Kopie aus `EveN_ForeverChronicle/tools/journal-export/src/`, siehe `src/core/SOURCE.txt` |
 
 Vorgesehen für spätere Etappen (noch nicht eingebunden):
 
 | Bestandteil | Lizenz | Etappe |
 |---|---|---|
-| Mediabunny (MP4 über WebCodecs) | MPL-2.0 (unverändert einbinden, Lizenztext ausliefern) | W6 |
-| gifenc (GIF-Encoder) | MIT | W6 |
 | Kartentabellen (UiMap, UiMapAssignment, UiMapXMapArt, UiMapArt, UiMapArtTile) von wago.tools, als `src/geo/index.json` | Auszüge der Client-Tabellen, Spielwelt-Inhalte © Blizzard Entertainment | W2 |
 
 ## Nur zur Entwicklung (nicht Teil der ausgelieferten Seite)

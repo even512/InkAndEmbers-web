@@ -10,3 +10,6 @@ Thumbs.db
 InkAndEmbers.lua
 InkAndEmbers.lua.bak
 /local/
+
+# große Vorschau-Videos nicht ins Repo (über 2 MB)
+docs/previews/*.mp4

@@ -215,7 +215,8 @@ export function segmentTrail(parsed, options = {}) {
       p = { t, x, y, mapID: b.mapID, mark };
     }
   }
-  return { segments, flights, hops, marks };
+  // Anfangszeiten der Strecken einmal vorhalten (positionAt wird je Video-Bild vielfach aufgerufen)
+  return { segments, flights, hops, marks, starts: segments.map((s) => s.t0) };
 }
 
 // Wiedergabe-Zeitachse: Stillstand (kein Punkt länger als IDLE.GAP s: AFK, Kampf auf der Stelle, offline) schrumpft auf
@@ -290,7 +291,8 @@ export function fromAxis(tl, q) {
 export function positionAt(seg, t) {
   const segments = seg && Array.isArray(seg.segments) ? seg.segments : [];
   if (!segments.length || !Number.isFinite(t) || t < segments[0].t0) return null;
-  const si = findLE(segments.map((s) => s.t0), t);
+  const starts = Array.isArray(seg.starts) && seg.starts.length === segments.length ? seg.starts : segments.map((s) => s.t0);
+  const si = findLE(starts, t);
   const s = segments[si];
   const i = findLE(s.t, t);
   if (i >= s.n - 1 || s.t[i] === t) return { segment: si, index: i, mapID: s.mapID, x: s.x[i], y: s.y[i] };

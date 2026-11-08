@@ -13,6 +13,7 @@ import { drawFrame, fitView, zoomAt, panBy, clampView, hitMarker, DEFAULT_ASPECT
 import * as PB from "../map/playback.mjs";
 import { t } from "./texts.mjs";
 import { safeText } from "./safe-text.mjs";
+import { createSharePanel } from "./share-panel.mjs";
 
 // Kartenbilder je Sprache (Ortsnamen stehen im Bild): maps/forever/<de|en>/<uiMapID>.webp, Rückfall en, dann Pergament
 export const MAP_DIR = "maps/forever/";
@@ -148,6 +149,14 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
   const emptyMsg = el(doc, "p", "panel-soon journey-empty");
 
   const ctx = canvas.getContext ? canvas.getContext("2d") : null;
+  // Teilen (W6): Video/GIF/PNG aus derselben Zeichenroutine; kennt Ansicht und Kapitel über getContext
+  const share = hasTrail
+    ? createSharePanel(doc, win, {
+      journal, char, lang, data, prepareJourney,
+      imageUrls: (mapID, l) => mapImageCandidates(mapID, l),
+      getContext: () => ({ mode: S.mode, chapter: S.chapter, mapID: S.map ? S.map.mapID : null }),
+    })
+    : null;
 
   // ---------------------------------------------------------------- Daten der aktuellen Stelle
   const epochAt = (p) => fromAxis(tl, p);
@@ -340,6 +349,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     if (i >= 0 && data.chapters[i]) PB.setRange(S.pb, data.chapters[i].a0, Math.max(data.chapters[i].a1, data.chapters[i].a0));
     else PB.setRange(S.pb, 0, tl.length);
     S.map = null;
+    if (share) share.syncChapter(i);
     buildControls();
     refresh();
   }
@@ -576,6 +586,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     root.appendChild(playback);
     root.appendChild(legend);
     root.appendChild(notes);
+    if (share) root.appendChild(share.element);
     buildControls();
     syncMap();
     buildControls(); // Kartenname im aria-label
@@ -589,6 +600,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     setLang(l) {
       if (l === S.lang) return;
       S.lang = l;
+      if (share) share.setLang(l);
       if (!hasTrail) {
         setText(doc, title, t(l, "journeyTitle"));
         setText(doc, emptyMsg, t(l, "jNoTrail", safeText(journal && journal.name, 40)));
@@ -615,6 +627,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     destroy() {
       S.destroyed = true;
       PB.pause(S.pb);
+      if (share) share.destroy();
       if (S.raf && win.cancelAnimationFrame) win.cancelAnimationFrame(S.raf);
       if (resizeObs) resizeObs.disconnect();
       if (darkQuery && darkQuery.removeEventListener) darkQuery.removeEventListener("change", onTheme);

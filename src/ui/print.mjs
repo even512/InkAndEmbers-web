@@ -8,7 +8,7 @@
 import { buildJournal } from "../core/journal-model.mjs";
 import { fmtDate } from "../core/i18n.mjs";
 import { el } from "../core/render.mjs";
-import { createAnonymizer, anonymizeChar, anonymizeModel, scrubJourney } from "../share/anonymize.mjs";
+import { createAnonymizer, anonymizeChar, anonymizeModel, scrubJourney, createRenumberer } from "../share/anonymize.mjs";
 import { sceneCache, mapTitle } from "../share/frames.mjs";
 import { buildChronik } from "../chronik/model.mjs";
 import { chronikModel } from "../chronik/index.mjs";
@@ -213,13 +213,24 @@ export function expandForPrint(root) {
   });
 }
 
-// Netz: jeden Textknoten und jedes alt/aria-label noch einmal nach fremden Namen durchsuchen
+// Netz: jeden Textknoten und jedes alt/aria-label/title noch einmal nach fremden Namen durchsuchen. Danach werden die
+// Pseudonyme in Lesereihenfolge neu nummeriert: der erste Fremde im Buch ist „Gefährte 1“, der nächste „Gefährte 2“ …
+const TEXT_ATTRS = ["alt", "aria-label", "title"];
 export function scrubTree(root, anon) {
   if (!anon) return;
+  const renumber = createRenumberer(anon.lang);
+  const fix = (v) => renumber(anon.scrub(v));
   walk(root, (n) => {
     if (n && n.nodeType === 3 && typeof n.data === "string") {
-      const s = anon.scrub(n.data);
+      const s = fix(n.data);
       if (s !== n.data) n.data = s;
+    } else if (n && n.nodeType === 1 && typeof n.setAttribute === "function") {
+      for (const name of TEXT_ATTRS) {
+        const v = attr(n, name);
+        if (typeof v !== "string" || !v) continue;
+        const s = fix(v);
+        if (s !== v) n.setAttribute(name, s);
+      }
     }
   });
 }

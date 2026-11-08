@@ -157,7 +157,8 @@ describe("Andere Spieler ausblenden", () => {
     expect(log).toContain("GI~36~3~Gefährte 1:PRIEST:6,Gefährte 2:MAGE:7");
     expect(log).toContain("DC~~Gefährte 3~");
     expect(log).toContain("PM~Auktionshaus~");
-    expect(copy.counters.mates).toBeUndefined();
+    expect(JSON.stringify(copy.counters.mates)).not.toContain("Kaelira"); // Schlüssel neutral, Werte bleiben
+    expect(Object.values(copy.counters.mates)).toEqual([3]);
     expect(copy.counters.kills).toBe(4);
     expect(char.log["1"] || char.log[1]).toContain("Kaelira");
     expect(pseudonym("en", 2)).toBe("Companion 2");

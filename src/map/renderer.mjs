@@ -13,6 +13,8 @@
 //            view = { cx, cy, zoom },  Mittelpunkt (Kartenkoordinaten 0..1) und Zoom (1 = ganze Karte)
 //            title = "",               Kartenname (nur im Rückfall gezeichnet)
 //            theme = "light",          "light" | "dark" (dunkel = Nachtlampe); Video immer "light"
+//            range = null,             { t0, t1 } (Epochen): Kapitel/Zeitraum; nur darin wird kräftig gezeichnet (Marker, Flüge,
+//                                      Route), die übrige Route steht blass dahinter
 //            timeline = null,          parse-trail buildTimeline: t ist dann eine Achsensekunde, sonst eine Epoche
 //            highlight = null,         Marker, der hervorgehoben wird (Maus darüber)
 //            drawMarkers = true,       false: Marker nicht zeichnen (die Seite legt sie als Knöpfe darüber)
@@ -104,6 +106,16 @@ export function cutoffFor(state, t) {
   return state.timeline && state.timeline.t0 !== null ? fromAxis(state.timeline, t) : t;
 }
 
+// Sichtbarer Zeitraum (Epochen) einer Ansicht: ab range.t0, bis zum Kopf t bzw. range.t1 -> { lo, hi }
+export function visibleSpan(state, t) {
+  const cut = cutoffFor(state, t);
+  const r = state && state.range;
+  if (!r) return { lo: -Infinity, hi: cut };
+  const lo = Number.isFinite(r.t0) ? r.t0 : -Infinity;
+  const hi = Number.isFinite(r.t1) ? Math.min(cut, r.t1) : cut;
+  return { lo, hi };
+}
+
 // letzter Index mit arr[i] <= v, sonst -1
 function lastLE(arr, v) {
   let lo = 0, hi = arr.length - 1, best = -1;
@@ -122,10 +134,10 @@ export function hitMarker(state, t, px, py, radius = MARKER_R + 3) {
   const scene = state.scene;
   if (!scene) return null;
   const T = transformFor(state);
-  const cut = cutoffFor(state, t);
+  const { lo, hi } = visibleSpan(state, t);
   for (let i = scene.markers.length - 1; i >= 0; i--) {
     const m = scene.markers[i];
-    if (m.t > cut) continue;
+    if (m.t > hi || m.t < lo) continue;
     const dx = T.ox + m.px * T.sx - px, dy = T.oy + m.py * T.sy - py;
     if (dx * dx + dy * dy <= radius * radius) return m;
   }
@@ -180,9 +192,48 @@ function drawFallback(ctx, T, theme, state) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   const labels = state.scene && Array.isArray(state.scene.labels) ? state.scene.labels : [];
+  const W = state.width > 0 ? state.width : x + w, H = state.height > 0 ? state.height : y + h;
+  const title = safeText(state.title || "", 60);
+  const measure = (text, font) => {
+    ctx.font = font;
+    const m = typeof ctx.measureText === "function" ? ctx.measureText(text) : null;
+    return m && Number.isFinite(m.width) ? m.width : text.length * Number((/(\d+)px/.exec(font) || [0, 14])[1]) * 0.55;
+  };
+  const LABEL_FONT = { zone: "italic 13px " + SERIF, place: "600 14px " + SERIF };
+  // Rechtecke der sichtbaren Ortsnamen (Mitte/Mitte), damit der Kartenname ihnen ausweicht
+  const boxes = [];
+  for (const l of labels) {
+    const px = x + l.x * w, py = y + l.y * h;
+    if (px < -80 || py < -20 || px > W + 80 || py > H + 20) continue;
+    const text = safeText(l.text, 60);
+    const tw = measure(text, l.kind === "zone" ? LABEL_FONT.zone : LABEL_FONT.place);
+    boxes.push({ x0: px - tw / 2 - 3, x1: px + tw / 2 + 3, y0: py - 10, y1: py + 10 });
+  }
+  let titleBox = null;
+  if (title) {
+    const tw = measure(title, "600 22px " + SERIF) + 4, th = 28, m = 12;
+    const left = Math.max(x, 0) + m, right = Math.min(x + w, W) - m - tw;
+    const top = Math.max(y, 0) + 8, bottom = Math.min(y + h, H) - 8 - th;
+    const hit = (b) => boxes.reduce((n, o) => n + (o.x0 < b.x1 && o.x1 > b.x0 && o.y0 < b.y1 && o.y1 > b.y0 ? 1 : 0), 0);
+    let best = null;
+    // Reihenfolge: oben links, unten rechts (oben rechts liegen die Zoomknöpfe, unten links der Hinweis der Seite), dann links
+    // abwärts verschoben, zuletzt die übrigen Ecken
+    const spots = [[left, top], [right, bottom], [left, top + 36], [left, top + 72], [left, top + 108], [left, bottom], [right, top]];
+    for (const [bx, by] of spots) {
+      const b = { x0: bx - 2, x1: bx + tw + 2, y0: by - 2, y1: by + th + 2, tx: bx, ty: by };
+      const n = hit(b);
+      if (!best || n < best.n) best = { n, b };
+      if (n === 0) break;
+    }
+    titleBox = best.b;
+  }
   for (const l of labels) {
     const px = x + l.x * w, py = y + l.y * h;
     const text = safeText(l.text, 60);
+    if (titleBox) {
+      const tw = measure(text, l.kind === "zone" ? LABEL_FONT.zone : LABEL_FONT.place);
+      if (px - tw / 2 - 3 < titleBox.x1 && px + tw / 2 + 3 > titleBox.x0 && py - 10 < titleBox.y1 && py + 10 > titleBox.y0) continue; // darunterliegender Name entfällt statt zu überlappen
+    }
     if (l.kind === "zone") {
       ctx.font = "italic 13px " + SERIF;
       ctx.fillStyle = theme.inkSoft;
@@ -195,28 +246,33 @@ function drawFallback(ctx, T, theme, state) {
     ctx.strokeText(text, px, py);
     ctx.fillText(text, px, py);
   }
-  const title = safeText(state.title || "", 60);
-  if (title) {
+  if (title && titleBox) {
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.font = "600 22px " + SERIF;
     ctx.lineWidth = 4;
     ctx.strokeStyle = theme.halo;
-    const tx = Math.max(x, 0) + 14, ty = Math.max(y, 0) + 10;
+    const tx = titleBox.tx, ty = titleBox.ty + 2;
     ctx.strokeText(title, tx, ty);
     ctx.fillStyle = theme.ink;
     ctx.fillText(title, tx, ty);
   }
 }
 
-function strokeLines(ctx, scene, T, cut) {
+function strokeLines(ctx, scene, T, cut, from = -Infinity) {
   ctx.beginPath();
   for (const l of scene.lines) {
     const n = l.t.length;
-    if (!n || l.t[0] > cut) continue;
+    if (!n || l.t[0] > cut || l.t[n - 1] < from) continue;
     const k = cut === Infinity ? n - 1 : lastLE(l.t, cut);
-    ctx.moveTo(T.ox + l.x[0] * T.sx, T.oy + l.y[0] * T.sy);
-    for (let i = 1; i <= k; i++) ctx.lineTo(T.ox + l.x[i] * T.sx, T.oy + l.y[i] * T.sy);
+    const i0 = from === -Infinity ? 0 : Math.max(0, lastLE(l.t, from));
+    if (k < i0) continue;
+    if (i0 < n - 1 && l.t[i0] < from && l.t[i0 + 1] > l.t[i0]) {
+      // Kapitelbeginn zwischen zwei Punkten: dort genau ansetzen
+      const f = (from - l.t[i0]) / (l.t[i0 + 1] - l.t[i0]);
+      ctx.moveTo(T.ox + (l.x[i0] + (l.x[i0 + 1] - l.x[i0]) * f) * T.sx, T.oy + (l.y[i0] + (l.y[i0 + 1] - l.y[i0]) * f) * T.sy);
+    } else ctx.moveTo(T.ox + l.x[i0] * T.sx, T.oy + l.y[i0] * T.sy);
+    for (let i = i0 + 1; i <= k; i++) ctx.lineTo(T.ox + l.x[i] * T.sx, T.oy + l.y[i] * T.sy);
     if (k < n - 1 && cut !== Infinity && l.t[k + 1] > l.t[k]) {
       const f = (cut - l.t[k]) / (l.t[k + 1] - l.t[k]);
       ctx.lineTo(T.ox + (l.x[k] + (l.x[k + 1] - l.x[k]) * f) * T.sx, T.oy + (l.y[k] + (l.y[k + 1] - l.y[k]) * f) * T.sy);
@@ -278,7 +334,7 @@ export function drawFrame(ctx, state, t = Infinity) {
   } else drawFallback(ctx, T, theme, state);
   const scene = state.scene;
   if (!scene) return;
-  const cut = cutoffFor(state, t);
+  const { lo, hi: cut } = visibleSpan(state, t);
   const zoomBoost = 1 + Math.log2(Math.max(1, (state.view && state.view.zoom) || 1)) * 0.25;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
@@ -286,7 +342,7 @@ export function drawFrame(ctx, state, t = Infinity) {
   const flightPath = () => {
     ctx.beginPath();
     for (const f of scene.flights) {
-      if (f.t0 > cut) continue;
+      if (f.t0 > cut || f.t1 < lo) continue;
       const q = cut === Infinity || cut >= f.t1 ? 1 : (cut - f.t0) / (f.t1 - f.t0);
       ctx.moveTo(T.ox + f.x0 * T.sx, T.oy + f.y0 * T.sy);
       ctx.lineTo(T.ox + (f.x0 + (f.x1 - f.x0) * q) * T.sx, T.oy + (f.y0 + (f.y1 - f.y0) * q) * T.sy);
@@ -301,21 +357,29 @@ export function drawFrame(ctx, state, t = Infinity) {
   ctx.setLineDash([9, 7]);
   flightPath();
   ctx.setLineDash([]);
+  // Kapitel/Zeitraum: die übrige Route der Karte blass dahinter
+  if (state.range) {
+    ctx.globalAlpha = 0.3;
+    ctx.strokeStyle = theme.route;
+    ctx.lineWidth = 2 * zoomBoost;
+    strokeLines(ctx, scene, T, Infinity);
+    ctx.globalAlpha = 1;
+  }
   // Route: heller Lichthof, dann die rote Linie
   ctx.strokeStyle = theme.glow;
   ctx.lineWidth = 7 * zoomBoost;
-  strokeLines(ctx, scene, T, cut);
+  strokeLines(ctx, scene, T, cut, lo);
   ctx.strokeStyle = theme.route;
   ctx.lineWidth = 3 * zoomBoost;
-  strokeLines(ctx, scene, T, cut);
+  strokeLines(ctx, scene, T, cut, lo);
   // Marker
   const hot = state.highlight || null;
   if (state.drawMarkers !== false) {
     for (const m of scene.markers) {
-      if (m.t > cut || m === hot) continue;
+      if (m.t > cut || m.t < lo || m === hot) continue;
       drawMarker(ctx, m, T.ox + m.px * T.sx, T.oy + m.py * T.sy, false, state.icons);
     }
-    if (hot && hot.t <= cut && scene.markers.includes(hot)) drawMarker(ctx, hot, T.ox + hot.px * T.sx, T.oy + hot.py * T.sy, true, state.icons);
+    if (hot && hot.t <= cut && hot.t >= lo && scene.markers.includes(hot)) drawMarker(ctx, hot, T.ox + hot.px * T.sx, T.oy + hot.py * T.sy, true, state.icons);
   }
   // Kopf der Wiedergabe
   const head = state.drawHead === false ? null : headAt(scene, cut);

@@ -7,7 +7,7 @@ import { buildJournal } from "../core/journal-model.mjs";
 import { el } from "../core/render.mjs";
 import { displayMap } from "../geo/map-geo.mjs";
 import { anonymizeForExport, scrubJourney } from "../share/anonymize.mjs";
-import { planTimeline, createFrameJob, renderFrame, fileName, VIDEO, GIF, SCOPES } from "../share/frames.mjs";
+import { planTimeline, createFrameJob, renderFrame, fileName, visitRange, sceneCache, VIDEO, GIF, SCOPES } from "../share/frames.mjs";
 import { LIMIT_BYTES, videoBitrate, formatBytes } from "../share/limits.mjs";
 import { probeH264, encodeMp4, recordWebm, recorderMime } from "../share/video-mp4.mjs";
 import { encodeGifAt } from "../share/gif.mjs";
@@ -259,14 +259,16 @@ export function createSharePanel(doc, win, opts) {
     const ctx = opts.getContext ? opts.getContext() : {};
     const { data: d, anon } = shareData({ data, char: opts.char, lang: S.lang, anonymize: S.anon, prepareJourney: opts.prepareJourney });
     const ch = S.range >= 0 ? d.chapters[S.range] : null;
-    const range = ch ? { p0: ch.a0, p1: Math.max(ch.a1, ch.a0) } : { p0: 0, p1: tl.length };
     const base = ch && ch.mapID ? ch.mapID : ctx.mapID || null;
+    const scenes = sceneCache(d, anon);
+    // „Aktuelle Zone“/Kontinent: nur die Zeit, in der die Reise auf dieser Karte war (keine leere Karte am Anfang)
+    const range = visitRange(d, S.scope, ch ? { p0: ch.a0, p1: Math.max(ch.a1, ch.a0) } : { p0: 0, p1: tl.length }, { baseMapID: base, scenes });
     const cfg = kind === "gif" ? GIF : VIDEO;
     const plan = planTimeline(range.p0, range.p1, { ...cfg, axisLength: tl.length });
     const images = new Map();
     const lang = S.lang;
     if (!S.icons) S.icons = await loadIcons(win);
-    const job0 = createFrameJob({ data: d, scope: S.scope, range, images, plan, info: { charName: opts.journal && opts.journal.name, lang }, anon, baseMapID: base, icons: S.icons });
+    const job0 = createFrameJob({ data: d, scope: S.scope, range, images, plan, info: { charName: opts.journal && opts.journal.name, lang }, anon, baseMapID: base, icons: S.icons, restrict: Boolean(ch), scenes });
     await Promise.all(job0.mapIDs().map(async (id) => {
       const m = displayMap(id);
       images.set(id, m && m.art && m.mapID === id ? await loadImage(win, opts.imageUrls(id, lang)) : null);

@@ -3,7 +3,7 @@
 // Datum) sowie ein dezentes Wasserzeichen darübergelegt. Kein DOM: gezeichnet wird in einen übergebenen 2D-Kontext
 // (OffscreenCanvas oder Canvas). Alle Texte aus der Datei laufen durch safeText.
 import { fmtDate } from "../core/i18n.mjs";
-import { fromAxis, positionAt } from "../trail/parse-trail.mjs";
+import { fromAxis, toAxis, positionAt } from "../trail/parse-trail.mjs";
 import { mapInfo } from "../geo/map-geo.mjs";
 import { zoneName } from "../geo/zone-names.mjs";
 import { buildLabels, prepareMapScene, chooseMap, levelAt } from "../map/scene.mjs";
@@ -109,18 +109,54 @@ export function mapTitle(data, mapID, lang = null) {
   return info ? safeText(info.name, 60) : "#" + mapID;
 }
 
+// Zeitraum auf die Besuche der gewählten Karte verdichten (nur Ausschnitt „Zone“ und „Kontinent“): sonst läuft das Video
+// durch Wochen, in denen auf dieser Karte nichts geschieht, und zeigt eine leere Karte. Ohne Besuche bleibt der Zeitraum.
+// -> { p0, p1 } auf der Achse, immer innerhalb von range
+export function visitRange(data, scope, range, { baseMapID = null, scenes = null, anon = null } = {}) {
+  if (scope !== "zone" && scope !== "continent") return range;
+  const tl = data.trail.timeline;
+  const id = mapChooser(data, scope, { baseMapID })(range.p0);
+  const scene = id ? (scenes || sceneCache(data, anon))(id) : null;
+  if (!scene) return range;
+  let lo = Infinity, hi = -Infinity;
+  // nur Punkte, die wirklich auf der Karte liegen (Nachbarkarten ragen mit ihrer Route über den Rand hinaus)
+  const inside = (x, y) => x >= -0.02 && x <= 1.02 && y >= -0.02 && y <= 1.02;
+  for (const l of scene.lines) {
+    for (let i = 0; i < l.t.length; i++) {
+      if (!inside(l.x[i], l.y[i])) continue;
+      if (l.t[i] < lo) lo = l.t[i];
+      if (l.t[i] > hi) hi = l.t[i];
+    }
+  }
+  for (const f of scene.flights) {
+    if (!inside(f.x0, f.y0) && !inside(f.x1, f.y1)) continue;
+    lo = Math.min(lo, f.t0);
+    hi = Math.max(hi, f.t1);
+  }
+  for (const m of scene.markers) {
+    lo = Math.min(lo, m.t);
+    hi = Math.max(hi, m.t);
+  }
+  if (!(hi >= lo)) return range;
+  const p0 = Math.max(range.p0, toAxis(tl, lo)), p1 = Math.min(range.p1, toAxis(tl, hi));
+  return p1 >= p0 ? { p0, p1 } : range;
+}
+
 // Auftrag für die Bild-Erzeugung zusammenstellen.
 //   data      prepareJourney-Ergebnis (bei „Andere Spieler ausblenden“ schon anonymisiert)
 //   scope     zone | continent | trip
 //   range     { p0, p1 } auf der Achse
+//   restrict  true: nur dieser Zeitraum (Kapitel) wird kräftig gezeichnet, die übrige Route steht blass dahinter
+//   scenes    sceneCache(...) von außen, damit Szenen nicht doppelt gebaut werden (optional)
 //   images    Map(mapID -> Bild oder null)
 //   plan      planTimeline(...)
 //   info      { charName, lang }
 //   icons     Map(Markerart -> Bild) mit den Addon-Symbolen (optional; ohne: Kreise mit Zeichen)
-export function createFrameJob({ data, scope, range, images, plan, info, anon = null, baseMapID = null, icons = null }) {
+export function createFrameJob({ data, scope, range, images, plan, info, anon = null, baseMapID = null, icons = null, restrict = false, scenes: sceneSource = null }) {
   const tl = data.trail.timeline;
   const pick = mapChooser(data, scope, { baseMapID });
-  const scenes = sceneCache(data, anon);
+  const scenes = sceneSource || sceneCache(data, anon);
+  const span = restrict ? { t0: fromAxis(tl, range.p0), t1: fromAxis(tl, range.p1) } : null;
   const views = new Map();
   const lang = info.lang;
   const charName = safeText(info.charName || "", 40);
@@ -143,7 +179,7 @@ export function createFrameJob({ data, scope, range, images, plan, info, anon = 
       mapID,
       state: {
         width: LOGICAL, height: LOGICAL, scene: scenes(mapID), image: img, aspect, view: viewFor(mapID, aspect),
-        title: "", theme: "light", timeline: tl, highlight: null, icons, // Kartenname steht in der Einblendung
+        title: "", theme: "light", timeline: tl, range: span, highlight: null, icons, // Kartenname steht in der Einblendung
       },
       overlay: {
         title: scope === "trip" ? st(lang, "shJourney") : mapTitle(data, mapID, lang),

@@ -215,7 +215,7 @@ function medalCard(doc, lang, m, maxLevel) {
   body.appendChild(el(doc, "h4", "medal-title", ct(lang, "title_" + m.id)));
   let tierLine;
   if (m.stepped) tierLine = m.earned ? ct(lang, "medTierCount", ct(lang, "tier_" + tier), m.count, m.max) : ct(lang, "medNoStep", m.max);
-  else tierLine = ct(lang, "tier_" + tier);
+  else tierLine = m.earned ? ct(lang, "tier_" + tier) : ct(lang, "medToEarn", ct(lang, "tier_" + tier));
   body.appendChild(el(doc, "p", "medal-tier tier-text-" + tier, tierLine));
   body.appendChild(el(doc, "p", "medal-need", need));
   if (m.stepped) {
@@ -264,7 +264,7 @@ function medalsPage(doc, lang, m) {
     );
   }
   const hidden = md.list.filter((e) => e.hidden).length;
-  if (hidden) kids.push(el(doc, "p", "medal-hidden", ct(lang, "medHidden", hidden)));
+  if (hidden) kids.push(el(doc, "p", "medal-hidden", ctn(lang, "medHidden", hidden)));
   return page(doc, "medals", "medal-page", ct(lang, "medTitle"), null, ...kids);
 }
 

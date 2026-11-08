@@ -236,9 +236,10 @@ export function startApp(doc, win) {
 
   // Auswahlfeld mit kurzer, vollständiger Beschriftung (Name – Realm, Stufe); keine Abschneidung
   function charLabel(c) {
+    // Stufe vor dem Realm: das geschlossene Auswahlfeld kürzt hinten, und der Realm ist der längste Teil
     let label = safeText(c.name, 40);
-    if (c.realm) label += " – " + safeText(c.realm, 40);
-    if (c.level !== null) label += ", " + t(state.lang, "charLevel", c.level);
+    if (c.level !== null) label += " – " + t(state.lang, "charLevel", c.level);
+    if (c.realm) label += (c.level !== null ? " · " : " – ") + safeText(c.realm, 40);
     return label;
   }
 

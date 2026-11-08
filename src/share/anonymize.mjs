@@ -37,12 +37,26 @@ export const NAME_FIELDS = Object.freeze({
 // Feldliste zu einem Kürzel aus der Datei; nur eigene Schlüssel ("constructor", "__proto__" … treffen nie den Prototyp)
 const specsFor = (code) => (typeof code === "string" && Object.prototype.hasOwnProperty.call(NAME_FIELDS, code) ? NAME_FIELDS[code] : null);
 
-// Zähler, deren Schlüssel oder Inhalte andere Spieler nennen
+// Zähler, deren Schlüssel oder Inhalte andere Spieler nennen. Die Schlüssel (Namen) werden durch neutrale Nummern ersetzt, die
+// Werte bleiben: Medaillen wie „Gesellig“ (verschiedene Mitspieler) zählen vor und nach dem Ausblenden gleich.
 export const SENSITIVE_COUNTERS = Object.freeze(["mates", "duels", "pvp", "trade", "mail"]);
 
 const PSEUDO = { de: "Gefährte {0}", en: "Companion {0}" };
 export function pseudonym(lang, n) {
   return (PSEUDO[lang] || PSEUDO.en).replace("{0}", String(n));
+}
+
+// Eindeutig kein Spielername, sondern eine Spielfigur der Welt: Spielernamen enthalten nie Leerzeichen (nur mit "-Realm"
+// dahinter wäre es ein Spieler), und „Auktionshaus“/„Doktor“ & Co. nennt kein Spieler so. Im Zweifel wird ersetzt.
+const NPC_WORDS = /(^|[\s-])(auktionshaus|auction house|doktor|doctor|arzt)($|[\s-])/i;
+export function looksLikeNpc(name) {
+  if (typeof name !== "string") return false;
+  const s = name.trim();
+  if (!s) return false;
+  if (/^\S+-\S+$/.test(s)) return false; // Name-Realm: Spieler
+  if (NPC_WORDS.test(s)) return true;
+  if (/\s/.test(s)) return !/^\S+\s.*-\S+$/.test(s); // Leerzeichen: Figur der Welt, außer mit Realm hinten
+  return false;
 }
 
 // Name aus einem Feld: gesäubert, ohne Leerraum; "?" und Leeres sind kein Name
@@ -103,7 +117,7 @@ export function collectForeignNames(char) {
         const names = sp.kind === "name" ? [v] : sp.kind === "members" ? splitMembers(v).map((m) => m.split(":")[0]) : splitPeople(v).map((p) => p.split(",")[1]);
         for (const n of names) {
           const c = cleanName(n);
-          if (c) found.push({ t, ln: ln++, name: c });
+          if (c && !looksLikeNpc(c)) found.push({ t, ln: ln++, name: c });
         }
       }
     }
@@ -138,7 +152,7 @@ export function createAnonymizer(char, lang = "de") {
   let extra = byForm.size;
   const alias = (raw) => {
     const c = cleanName(raw);
-    if (!c) return raw;
+    if (!c || looksLikeNpc(c)) return raw;
     const hit = byForm.get(c) || byForm.get(nameForms(c).pop());
     if (hit) return hit;
     // unbekannter Name in einem Namensfeld: trotzdem ersetzen (lieber ein Gefährte zu viel als ein Name zu viel)
@@ -198,10 +212,35 @@ export function anonymizeChar(char, anon) {
   copy.log = log;
   if (isTable(char.counters)) {
     const c = Object.assign(Object.create(null), char.counters);
-    for (const key of SENSITIVE_COUNTERS) delete c[key];
+    for (const key of SENSITIVE_COUNTERS) {
+      const src = Object.prototype.hasOwnProperty.call(c, key) ? c[key] : null;
+      if (isTable(src)) {
+        // gleiche Werte, aber ohne Namen als Schlüssel (Reihenfolge der Einträge bleibt)
+        const neutral = Object.create(null);
+        let n = 0;
+        for (const k of Object.keys(src)) neutral["#" + ++n] = src[k];
+        c[key] = neutral;
+      } else delete c[key];
+    }
     copy.counters = c;
   }
   return copy;
+}
+
+// Pseudonyme in Lesereihenfolge neu nummerieren: Der erste Name, den man in der Ansicht liest, ist „Gefährte 1“, der nächste
+// „Gefährte 2“ … (die Nummern aus dem ganzen Log wären sonst bei 7, 12, 31 …). Gleicher Name behält seine Nummer.
+// -> (text) => text; die Funktion merkt sich die Zuordnung, ruft man sie in Lesereihenfolge auf.
+export function createRenumberer(lang = "de") {
+  const word = (PSEUDO[lang] || PSEUDO.en).replace(" {0}", "");
+  const re = new RegExp("(?<![\\p{L}\\p{N}])" + escapeRe(word) + " (\\d{1,6})(?![\\p{L}\\p{N}])", "gu");
+  const map = new Map();
+  return (text) => {
+    if (typeof text !== "string" || !text.includes(word)) return text;
+    return text.replace(re, (m, n) => {
+      if (!map.has(n)) map.set(n, map.size + 1);
+      return pseudonym(lang, map.get(n));
+    });
+  };
 }
 
 const scrubField = (anon, v) => (typeof v === "string" ? anon.scrub(v) : v);

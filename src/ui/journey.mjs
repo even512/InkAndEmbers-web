@@ -11,7 +11,7 @@ import { readCharacterTrail, fromAxis, positionAt } from "../trail/parse-trail.m
 import { mapInfo } from "../geo/map-geo.mjs";
 import { zoneName } from "../geo/zone-names.mjs";
 import { buildMarkers, buildChapters, buildLabels, prepareMapScene, chooseMap, chapterAtAxis, levelTrack, levelAt, playedTrack, playedAt } from "../map/scene.mjs";
-import { drawFrame, fitView, zoomAt, panBy, clampView, hitMarker, transformFor, cutoffFor, headAt, DEFAULT_ASPECT, ZOOM_STEP } from "../map/renderer.mjs";
+import { drawFrame, fitView, zoomAt, panBy, clampView, hitMarker, transformFor, visibleSpan, headAt, DEFAULT_ASPECT, ZOOM_STEP } from "../map/renderer.mjs";
 import * as PB from "../map/playback.mjs";
 import { t } from "./texts.mjs";
 import { safeText } from "./safe-text.mjs";
@@ -216,9 +216,16 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
   // ---------------------------------------------------------------- Daten der aktuellen Stelle
   const epochAt = (p) => fromAxis(tl, p);
   const cutAxis = () => PB.drawAxis(S.pb);
+  // Zeitpunkt der Anzeige: angehalten am Ende = Ende des gewählten Kapitels (bzw. der ganzen Reise)
   const nowEpoch = () => {
     const a = cutAxis();
-    return a === Infinity ? tl.t1 : epochAt(a);
+    if (a !== Infinity) return epochAt(a);
+    return S.chapter >= 0 ? epochAt(S.pb.p) : tl.t1;
+  };
+  // Zeitraum des gewählten Kapitels (Epochen) oder null bei der ganzen Reise
+  const chapterRange = () => {
+    const c = S.chapter >= 0 ? data.chapters[S.chapter] : null;
+    return c ? { t0: c.t0, t1: c.t1 } : null;
   };
 
   function baseMapID() {
@@ -295,6 +302,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
       title: mapTitle(),
       theme: darkQuery && darkQuery.matches ? "dark" : "light",
       timeline: tl,
+      range: chapterRange(),
       highlight: S.hover,
       drawMarkers: false, // Marker liegen als Knöpfe über der Karte
       drawHead: false,
@@ -366,10 +374,10 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
 
   function placePins(st) {
     const T = transformFor(st);
-    const cut = cutoffFor(st, cutAxis());
+    const { lo, hi: cut } = visibleSpan(st, cutAxis());
     for (const p of pinList) {
       const x = T.ox + p.m.px * T.sx, y = T.oy + p.m.py * T.sy;
-      const show = p.m.t <= cut && x >= -14 && y >= -14 && x <= st.width + 14 && y <= st.height + 14;
+      const show = p.m.t <= cut && p.m.t >= lo && x >= -14 && y >= -14 && x <= st.width + 14 && y <= st.height + 14;
       p.btn.hidden = !show;
       if (show && p.btn.style) p.btn.style.transform = "translate(" + x.toFixed(1) + "px, " + y.toFixed(1) + "px)";
       if (p.btn.classList) {

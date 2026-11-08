@@ -1,0 +1,36 @@
+Ink & Embers – Tagebuch im Browser (inkandembers-web)
+
+Der Quelltext dieses Projekts (alles unter src/, scripts/, tests/ sowie die Konfigurationsdateien) steht unter der
+MIT-Lizenz:
+
+MIT License
+
+Copyright (c) 2026 even512
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Ausnahmen (nicht unter der MIT-Lizenz):
+
+- Schriften unter public/fonts/ (Spectral, Caveat): SIL Open Font License 1.1, Lizenztexte liegen daneben.
+- Grafiken unter public/img/ (falls vorhanden): Eigene Grafiken des Autors für Ink & Embers; Nutzung mit dem Projekt,
+  keine Lizenz für andere Zwecke.
+- Kartenbilder unter public/maps/ (ab Etappe W3): Kartenkunst © Blizzard Entertainment, aus dem Spielclient entnommen,
+  nicht-kommerzielle Fan-Nutzung, keine Lizenz an Dritte. Siehe public/maps/LICENSE-NOTE.md.
+- World of Warcraft und alle zugehörigen Namen und Kunstwerke sind Eigentum von Blizzard Entertainment. Dieses Projekt ist
+  ein Fanprojekt und nicht mit Blizzard Entertainment verbunden.

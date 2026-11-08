@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; font-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Ink &amp; Embers: Reisetagebuch aus World of Warcraft im Browser. Alles bleibt auf deinem Rechner.">
+<link rel="icon" href="data:,">
+<title>Ink &amp; Embers · Tagebuch im Browser</title>
+<!--
+  Ink & Embers: Tagebuch im Browser. Statische Seite ohne Server: Die Datei WTF\Account\<Konto>\SavedVariables\InkAndEmbers.lua
+  wird hineingezogen und nur im Browser gelesen. Die Content-Security-Policy oben verbietet jede Verbindung nach außen,
+  Inline-Skripte und Inline-Styles. (Im Entwicklungsserver ersetzt vite.config.mjs sie durch eine lockere Fassung.)
+-->
+</head>
+<body>
+<div id="app"><noscript><p class="noscript">Diese Seite braucht JavaScript (läuft nur lokal in Eurem Browser, ohne Verbindung nach außen). / This page needs JavaScript (it runs locally in your browser, with no outside connection).</p></noscript></div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

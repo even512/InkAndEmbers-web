@@ -1,0 +1,59 @@
+/* Ergänzungen der Webseite zum Buch-Stil aus core/style.css (Pergament, Tinte, Siegelrot). */
+
+.noscript { padding: 2em; font-family: Georgia, serif; }
+
+.journal-shell { max-width: 1100px; margin: 0 auto; padding: 22px 18px 40px; }
+
+.journal-head { text-align: center; margin: 8px 0 18px; }
+.journal-name { font-weight: 600; color: var(--head); margin: 0; font-size: 2.2em; overflow-wrap: anywhere; }
+.journal-meta { font-family: var(--hand); font-size: 1.5em; color: var(--seal); margin: 2px 0 0; overflow-wrap: anywhere; }
+
+.view-tabs { display: flex; justify-content: center; gap: 8px; margin: 0 0 16px; flex-wrap: wrap; }
+.tab-btn {
+  font: inherit;
+  cursor: pointer;
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--ochre);
+  background: var(--paper-2);
+  color: var(--ink);
+}
+.tab-btn:hover { background: var(--paper-1); }
+.tab-btn.active { background: var(--seal); border-color: var(--seal-dark); color: #fff6e6; font-weight: 600; }
+.tab-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.view-panel {
+  background: linear-gradient(180deg, var(--paper-1), var(--paper-2));
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  box-shadow: 0 6px 22px rgba(60, 40, 20, 0.22);
+  padding: 28px 24px;
+  min-height: 320px;
+}
+.placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.panel-title { font-weight: 600; color: var(--head); margin: 0 0 8px; }
+.panel-soon { font-family: var(--hand); font-size: 1.5em; color: var(--ink-soft); margin: 0; max-width: 36em; }
+
+.site-footer {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 18px;
+  text-align: center;
+  font-size: 0.85em;
+  color: var(--ink-soft);
+}
+.site-footer p { margin: 2px 0; }
+@media (prefers-color-scheme: dark) {
+  .site-footer { color: var(--chrome-muted); }
+}
+
+@media print {
+  .site-footer { display: none !important; }
+}
+
+/* Kopf direkt auf dem Schreibtisch: im dunklen Thema helle Schrift (Pergament-Fläche darunter bleibt hell) */
+@media (prefers-color-scheme: dark) {
+  .journal-name { color: var(--chrome-fg); }
+  .journal-meta { color: var(--accent); }
+  .tab-btn { border-color: var(--chrome-muted); }
+}

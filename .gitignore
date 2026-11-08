@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+# echte Spielerdaten nie committen (nur synthetische Fixtures unter tests/fixtures/)
+InkAndEmbers.lua
+InkAndEmbers.lua.bak
+/local/

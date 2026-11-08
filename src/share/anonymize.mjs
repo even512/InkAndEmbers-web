@@ -28,6 +28,8 @@ export const NAME_FIELDS = Object.freeze({
   GL: [{ i: 0, kind: "name" }],
   WB: [{ i: 0, kind: "name" }],
   WV: [{ i: 0, kind: "name" }],
+  LG: [{ i: 3, kind: "name" }], // Empfänger von Gruppenbeute (Chronik: Dungeon-Beute)
+  AH: [{ i: 7, kind: "name" }], // Käufer/Verkäufer laut Rechnung (nur wenn gesetzt, empty() greift in rewriteFields)
   GI: [{ i: 2, kind: "members" }],
   LF: [{ i: 6, kind: "people" }],
 });

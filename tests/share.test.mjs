@@ -317,3 +317,23 @@ describe("Anonymisierung der Chronik-Felder (W5) am echten Modell", () => {
     expect(group[0].name).toBe(realNames[0]); // Original unverändert
   });
 });
+
+describe("Anonymisierung: Gruppenbeute (LG) und Auktionshaus-Partner (AH)", () => {
+  const mkChar = (lines) => ({ info: { name: "Eigener" }, log: { 1: ["#~1794000000~1", ...lines].join("\n") } });
+  it("collectForeignNames und anonymizeChar erfassen LG.who und AH.partner; leerer Partner bleibt leer", () => {
+    const char = mkChar([
+      "10~LG~2978~1~3~Zedrik-Testreich~MAGE~need",
+      "20~AH~sold~2978~~1~5000~250~~Handelsfuerst-Realm~12~1429",
+      "30~AH~post~2978~~1~5000~250~24~~12~1429",
+    ]);
+    expect(collectForeignNames(char)).toEqual(["Zedrik-Testreich", "Handelsfuerst-Realm"]);
+    const anon = createAnonymizer(char, "de");
+    const copy = anonymizeChar(char, anon);
+    const text = copy.log["1"];
+    expect(text).not.toContain("Zedrik");
+    expect(text).not.toContain("Handelsfuerst");
+    expect(text).toContain("20~AH~sold~2978~~1~5000~250~~Gefährte 2~12~1429");
+    expect(text).toContain("30~AH~post~2978~~1~5000~250~24~~12~1429");
+    expect(anon.scrub("Zedrik verkauft an Handelsfuerst")).toBe("Gefährte 1 verkauft an Gefährte 2");
+  });
+});

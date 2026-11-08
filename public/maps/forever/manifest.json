@@ -1,0 +1,1152 @@
+{
+ "maps": {
+  "947": {
+   "name": "Azeroth",
+   "art": 2141,
+   "files": {
+    "en": {
+     "file": "en/947.webp",
+     "bytes": 135302,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/947.webp",
+     "bytes": 136630,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 0
+  },
+  "1411": {
+   "name": "Durotar",
+   "art": 2169,
+   "files": {
+    "en": {
+     "file": "en/1411.webp",
+     "bytes": 141522,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1411.webp",
+     "bytes": 141432,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 11
+  },
+  "1412": {
+   "name": "Mulgore",
+   "art": 1200,
+   "files": {
+    "en": {
+     "file": "en/1412.webp",
+     "bytes": 137450,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1412.webp",
+     "bytes": 137394,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 15
+  },
+  "1413": {
+   "name": "The Barrens",
+   "art": 2181,
+   "files": {
+    "en": {
+     "file": "en/1413.webp",
+     "bytes": 156892,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1413.webp",
+     "bytes": 162840,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 25
+  },
+  "1414": {
+   "name": "Kalimdor",
+   "art": 2142,
+   "files": {
+    "en": {
+     "file": "en/1414.webp",
+     "bytes": 159216,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1414.webp",
+     "bytes": 159520,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 0
+  },
+  "1415": {
+   "name": "Eastern Kingdoms",
+   "art": 2140,
+   "files": {
+    "en": {
+     "file": "en/1415.webp",
+     "bytes": 159518,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1415.webp",
+     "bytes": 160458,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 0
+  },
+  "1416": {
+   "name": "Alterac Mountains",
+   "art": 2133,
+   "files": {
+    "en": {
+     "file": "en/1416.webp",
+     "bytes": 143560,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1416.webp",
+     "bytes": 143336,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 15
+  },
+  "1417": {
+   "name": "Arathi Highlands",
+   "art": 2147,
+   "files": {
+    "en": {
+     "file": "en/1417.webp",
+     "bytes": 163822,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1417.webp",
+     "bytes": 163510,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 16
+  },
+  "1418": {
+   "name": "Badlands",
+   "art": 2159,
+   "files": {
+    "en": {
+     "file": "en/1418.webp",
+     "bytes": 136054,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1418.webp",
+     "bytes": 136060,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 14
+  },
+  "1419": {
+   "name": "Blasted Lands",
+   "art": 2148,
+   "files": {
+    "en": {
+     "file": "en/1419.webp",
+     "bytes": 149366,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1419.webp",
+     "bytes": 150364,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 9
+  },
+  "1420": {
+   "name": "Tirisfal Glades",
+   "art": 2126,
+   "files": {
+    "en": {
+     "file": "en/1420.webp",
+     "bytes": 137088,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1420.webp",
+     "bytes": 136858,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 17
+  },
+  "1421": {
+   "name": "Silverpine Forest",
+   "art": 2158,
+   "files": {
+    "en": {
+     "file": "en/1421.webp",
+     "bytes": 141132,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1421.webp",
+     "bytes": 141108,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 15
+  },
+  "1422": {
+   "name": "Western Plaguelands",
+   "art": 2164,
+   "files": {
+    "en": {
+     "file": "en/1422.webp",
+     "bytes": 152998,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1422.webp",
+     "bytes": 153040,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 13
+  },
+  "1423": {
+   "name": "Eastern Plaguelands",
+   "art": 2134,
+   "files": {
+    "en": {
+     "file": "en/1423.webp",
+     "bytes": 153600,
+     "quality": 85
+    },
+    "de": {
+     "file": "de/1423.webp",
+     "bytes": 153316,
+     "quality": 85
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 23
+  },
+  "1424": {
+   "name": "Hillsbrad Foothills",
+   "art": 2154,
+   "files": {
+    "en": {
+     "file": "en/1424.webp",
+     "bytes": 147904,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1424.webp",
+     "bytes": 148174,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 12
+  },
+  "1425": {
+   "name": "The Hinterlands",
+   "art": 2162,
+   "files": {
+    "en": {
+     "file": "en/1425.webp",
+     "bytes": 134272,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1425.webp",
+     "bytes": 133934,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 14
+  },
+  "1426": {
+   "name": "Dun Morogh",
+   "art": 2151,
+   "files": {
+    "en": {
+     "file": "en/1426.webp",
+     "bytes": 147610,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1426.webp",
+     "bytes": 146828,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 18
+  },
+  "1427": {
+   "name": "Searing Gorge",
+   "art": 2157,
+   "files": {
+    "en": {
+     "file": "en/1427.webp",
+     "bytes": 155932,
+     "quality": 85
+    },
+    "de": {
+     "file": "de/1427.webp",
+     "bytes": 155502,
+     "quality": 85
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 7
+  },
+  "1428": {
+   "name": "Burning Steppes",
+   "art": 2149,
+   "files": {
+    "en": {
+     "file": "en/1428.webp",
+     "bytes": 142546,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1428.webp",
+     "bytes": 142508,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 10
+  },
+  "1429": {
+   "name": "Elwynn Forest",
+   "art": 2153,
+   "files": {
+    "en": {
+     "file": "en/1429.webp",
+     "bytes": 137800,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1429.webp",
+     "bytes": 137250,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 12
+  },
+  "1430": {
+   "name": "Deadwind Pass",
+   "art": 2150,
+   "files": {
+    "en": {
+     "file": "en/1430.webp",
+     "bytes": 140440,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1430.webp",
+     "bytes": 140924,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 3
+  },
+  "1431": {
+   "name": "Duskwood",
+   "art": 2152,
+   "files": {
+    "en": {
+     "file": "en/1431.webp",
+     "bytes": 136482,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1431.webp",
+     "bytes": 137408,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 13
+  },
+  "1432": {
+   "name": "Loch Modan",
+   "art": 2156,
+   "files": {
+    "en": {
+     "file": "en/1432.webp",
+     "bytes": 135924,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1432.webp",
+     "bytes": 135662,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 11
+  },
+  "1433": {
+   "name": "Redridge Mountains",
+   "art": 2121,
+   "files": {
+    "en": {
+     "file": "en/1433.webp",
+     "bytes": 138992,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1433.webp",
+     "bytes": 139274,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 11
+  },
+  "1434": {
+   "name": "Stranglethorn Vale",
+   "art": 2160,
+   "files": {
+    "en": {
+     "file": "en/1434.webp",
+     "bytes": 145478,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1434.webp",
+     "bytes": 147010,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 26,
+   "warnings": [
+    "WorldMapOverlay 5252 (Gebiet 19, 256x256): keine Teilstücke in WorldMapOverlayTile, fehlt im Bild"
+   ]
+  },
+  "1435": {
+   "name": "Swamp of Sorrows",
+   "art": 2161,
+   "files": {
+    "en": {
+     "file": "en/1435.webp",
+     "bytes": 140452,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1435.webp",
+     "bytes": 140874,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 11
+  },
+  "1436": {
+   "name": "Westfall",
+   "art": 2165,
+   "files": {
+    "en": {
+     "file": "en/1436.webp",
+     "bytes": 165288,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1436.webp",
+     "bytes": 132140,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 14
+  },
+  "1437": {
+   "name": "Wetlands",
+   "art": 2166,
+   "files": {
+    "en": {
+     "file": "en/1437.webp",
+     "bytes": 165848,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1437.webp",
+     "bytes": 133534,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 15
+  },
+  "1438": {
+   "name": "Teldrassil",
+   "art": 2180,
+   "files": {
+    "en": {
+     "file": "en/1438.webp",
+     "bytes": 160396,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1438.webp",
+     "bytes": 160016,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 11
+  },
+  "1439": {
+   "name": "Darkshore",
+   "art": 2171,
+   "files": {
+    "en": {
+     "file": "en/1439.webp",
+     "bytes": 157684,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1439.webp",
+     "bytes": 158426,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 9
+  },
+  "1440": {
+   "name": "Ashenvale",
+   "art": 2167,
+   "files": {
+    "en": {
+     "file": "en/1440.webp",
+     "bytes": 131612,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1440.webp",
+     "bytes": 132670,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 18
+  },
+  "1441": {
+   "name": "Thousand Needles",
+   "art": 2182,
+   "files": {
+    "en": {
+     "file": "en/1441.webp",
+     "bytes": 125960,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1441.webp",
+     "bytes": 126922,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 9
+  },
+  "1442": {
+   "name": "Stonetalon Mountains",
+   "art": 2178,
+   "files": {
+    "en": {
+     "file": "en/1442.webp",
+     "bytes": 153060,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1442.webp",
+     "bytes": 153148,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 11
+  },
+  "1443": {
+   "name": "Desolace",
+   "art": 2130,
+   "files": {
+    "en": {
+     "file": "en/1443.webp",
+     "bytes": 131212,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1443.webp",
+     "bytes": 164922,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 15
+  },
+  "1444": {
+   "name": "Feralas",
+   "art": 2170,
+   "files": {
+    "en": {
+     "file": "en/1444.webp",
+     "bytes": 149310,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1444.webp",
+     "bytes": 149516,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 16
+  },
+  "1445": {
+   "name": "Dustwallow Marsh",
+   "art": 2173,
+   "files": {
+    "en": {
+     "file": "en/1445.webp",
+     "bytes": 164048,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1445.webp",
+     "bytes": 163982,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 7
+  },
+  "1446": {
+   "name": "Tanaris",
+   "art": 2179,
+   "files": {
+    "en": {
+     "file": "en/1446.webp",
+     "bytes": 132310,
+     "quality": 75
+    },
+    "de": {
+     "file": "de/1446.webp",
+     "bytes": 132292,
+     "quality": 75
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 20
+  },
+  "1447": {
+   "name": "Azshara",
+   "art": 2168,
+   "files": {
+    "en": {
+     "file": "en/1447.webp",
+     "bytes": 159482,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1447.webp",
+     "bytes": 160040,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 19
+  },
+  "1448": {
+   "name": "Felwood",
+   "art": 2174,
+   "files": {
+    "en": {
+     "file": "en/1448.webp",
+     "bytes": 140670,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1448.webp",
+     "bytes": 140902,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 12
+  },
+  "1449": {
+   "name": "Un'Goro Crater",
+   "art": 2184,
+   "files": {
+    "en": {
+     "file": "en/1449.webp",
+     "bytes": 158302,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1449.webp",
+     "bytes": 158782,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 7
+  },
+  "1450": {
+   "name": "Moonglade",
+   "art": 2175,
+   "files": {
+    "en": {
+     "file": "en/1450.webp",
+     "bytes": 137608,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1450.webp",
+     "bytes": 137480,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 1
+  },
+  "1451": {
+   "name": "Silithus",
+   "art": 2177,
+   "files": {
+    "en": {
+     "file": "en/1451.webp",
+     "bytes": 130618,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1451.webp",
+     "bytes": 130842,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 7
+  },
+  "1452": {
+   "name": "Winterspring",
+   "art": 2185,
+   "files": {
+    "en": {
+     "file": "en/1452.webp",
+     "bytes": 149030,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1452.webp",
+     "bytes": 149316,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 13
+  },
+  "1453": {
+   "name": "Stormwind City",
+   "art": 2146,
+   "files": {
+    "en": {
+     "file": "en/1453.webp",
+     "bytes": 165892,
+     "quality": 85
+    },
+    "de": {
+     "file": "de/1453.webp",
+     "bytes": 131630,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 0
+  },
+  "1454": {
+   "name": "Orgrimmar",
+   "art": 2176,
+   "files": {
+    "en": {
+     "file": "en/1454.webp",
+     "bytes": 164150,
+     "quality": 85
+    },
+    "de": {
+     "file": "de/1454.webp",
+     "bytes": 164402,
+     "quality": 85
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 0
+  },
+  "1455": {
+   "name": "Ironforge",
+   "art": 2155,
+   "files": {
+    "en": {
+     "file": "en/1455.webp",
+     "bytes": 154618,
+     "quality": 85
+    },
+    "de": {
+     "file": "de/1455.webp",
+     "bytes": 158436,
+     "quality": 85
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 0
+  },
+  "1456": {
+   "name": "Thunder Bluff",
+   "art": 2183,
+   "files": {
+    "en": {
+     "file": "en/1456.webp",
+     "bytes": 154408,
+     "quality": 85
+    },
+    "de": {
+     "file": "de/1456.webp",
+     "bytes": 155050,
+     "quality": 85
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 0
+  },
+  "1457": {
+   "name": "Darnassus",
+   "art": 2172,
+   "files": {
+    "en": {
+     "file": "en/1457.webp",
+     "bytes": 151284,
+     "quality": 85
+    },
+    "de": {
+     "file": "de/1457.webp",
+     "bytes": 151452,
+     "quality": 85
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 0
+  },
+  "1458": {
+   "name": "Undercity",
+   "art": 2163,
+   "files": {
+    "en": {
+     "file": "en/1458.webp",
+     "bytes": 142232,
+     "quality": 85
+    },
+    "de": {
+     "file": "de/1458.webp",
+     "bytes": 143410,
+     "quality": 85
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 0
+  },
+  "1459": {
+   "name": "Alterac Valley",
+   "art": 2186,
+   "files": {
+    "en": {
+     "file": "en/1459.webp",
+     "bytes": 143978,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1459.webp",
+     "bytes": 144004,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 3
+  },
+  "1460": {
+   "name": "Warsong Gulch",
+   "art": 2188,
+   "files": {
+    "en": {
+     "file": "en/1460.webp",
+     "bytes": 121294,
+     "quality": 85
+    },
+    "de": {
+     "file": "de/1460.webp",
+     "bytes": 121410,
+     "quality": 85
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 0
+  },
+  "1461": {
+   "name": "Arathi Basin",
+   "art": 2187,
+   "files": {
+    "en": {
+     "file": "en/1461.webp",
+     "bytes": 130650,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/1461.webp",
+     "bytes": 130512,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 0
+  },
+  "1463": {
+   "name": "Eastern Kingdoms",
+   "art": 2145,
+   "files": {
+    "en": {
+     "file": "en/1463.webp",
+     "bytes": 75618,
+     "quality": 90
+    },
+    "de": {
+     "file": "de/1463.webp",
+     "bytes": 75618,
+     "quality": 90
+    }
+   },
+   "width": 512,
+   "height": 512,
+   "overlays": 0
+  },
+  "1464": {
+   "name": "Kalimdor",
+   "art": 1279,
+   "files": {
+    "en": {
+     "file": "en/1464.webp",
+     "bytes": 71352,
+     "quality": 90
+    },
+    "de": {
+     "file": "de/1464.webp",
+     "bytes": 71352,
+     "quality": 90
+    }
+   },
+   "width": 512,
+   "height": 512,
+   "overlays": 0
+  },
+  "2482": {
+   "name": "Mount Hyjal",
+   "art": 1997,
+   "files": {
+    "en": {
+     "file": "en/2482.webp",
+     "bytes": 158406,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/2482.webp",
+     "bytes": 158058,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 9
+  },
+  "2521": {
+   "name": "Zephras Isle",
+   "art": 2031,
+   "files": {
+    "en": {
+     "file": "en/2521.webp",
+     "bytes": 155418,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/2521.webp",
+     "bytes": 153032,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 15
+  },
+  "2524": {
+   "name": "Darkspear Islands",
+   "art": 2034,
+   "files": {
+    "en": {
+     "file": "en/2524.webp",
+     "bytes": 137358,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/2524.webp",
+     "bytes": 137230,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 0
+  },
+  "2548": {
+   "name": "Riverglades",
+   "art": 2054,
+   "files": {
+    "en": {
+     "file": "en/2548.webp",
+     "bytes": 144976,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/2548.webp",
+     "bytes": 145152,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 13
+  },
+  "2652": {
+   "name": "Shen'dralas",
+   "art": 2132,
+   "files": {
+    "en": {
+     "file": "en/2652.webp",
+     "bytes": 139442,
+     "quality": 80
+    },
+    "de": {
+     "file": "de/2652.webp",
+     "bytes": 138260,
+     "quality": 80
+    }
+   },
+   "width": 1002,
+   "height": 668,
+   "overlays": 7
+  },
+  "2665": {
+   "name": "Zephras Isle",
+   "art": 2190,
+   "files": {
+    "en": {
+     "file": "en/2665.webp",
+     "bytes": 82140,
+     "quality": 90
+    },
+    "de": {
+     "file": "de/2665.webp",
+     "bytes": 82140,
+     "quality": 90
+    }
+   },
+   "width": 512,
+   "height": 512,
+   "overlays": 0
+  }
+ },
+ "build": "1.60.1.70862",
+ "product": "wowf",
+ "source": "lokaler Client (CASC), Tabellen wago.tools",
+ "license": "../LICENSE-NOTE.md",
+ "totalBytes": 17104298
+}

@@ -48,7 +48,7 @@ src/trail/          parse-trail.mjs: Positionsspur prüfen, in Strecken zerlegen
 src/geo/            map-geo.mjs (Zone <-> Kontinent, Anzeigekarte), index.json (generiert)
 src/ui/             Seite: app.mjs, load-file.mjs (Limits), drop.mjs, texts.mjs (DE/EN), safe-text.mjs, CSS
 public/fonts/       Spectral und Caveat (SIL OFL)
-scripts/            sync-core.mjs, build-map-index.mjs (später: extract-maps.mjs)
+scripts/            sync-core.mjs, build-map-index.mjs, extract-maps.mjs (Kartenkunst aus dem lokalen Client)
 scripts/data/       wago.tools-Schnappschüsse der Kartentabellen je Build
 tests/              Vitest + synthetische Fixtures (keine echten Spielerdaten)
 .github/workflows/  pages.yml (Deploy auf GitHub Pages)
@@ -69,7 +69,7 @@ tests/              Vitest + synthetische Fixtures (keine echten Spielerdaten)
 `.env.example` nach `.env` kopieren (steht in `.gitignore`). Alles ist optional:
 
 - `CHRONICLE_REPO`: Pfad zum Addon-Repo für `sync-core` (Vorgabe: Nachbarordner `../EveN_ForeverChronicle`).
-- `WOW_FOREVER_DIR`: Pfad zum Spielclient, nur für das spätere Kartenskript (W3).
+- `WOW_FOREVER_DIR`: Pfad zum Spielclient (WoW-Ordner mit `Data/`), nur für `npm run extract-maps` (W3).
 
 ## Deploy
 

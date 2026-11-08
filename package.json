@@ -16,10 +16,14 @@
     "sync-core": "node scripts/sync-core.mjs",
     "check-core": "node scripts/sync-core.mjs --check",
     "build-map-index": "node scripts/build-map-index.mjs",
-    "check-map-index": "node scripts/build-map-index.mjs --check"
+    "check-map-index": "node scripts/build-map-index.mjs --check",
+    "extract-maps": "node scripts/extract-maps.mjs"
   },
   "devDependencies": {
+    "@jamiephan/casclib": "0.4.0",
+    "sharp": "0.35.5",
     "vite": "^8.3.6",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "wow-blp-web": "0.7.2"
   }
 }

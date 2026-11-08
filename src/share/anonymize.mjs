@@ -57,6 +57,7 @@ export function looksLikeNpc(name, known) {
   if (!s) return false;
   if (known && typeof known.has === "function" && known.has(s)) return false;
   if (/^\S+-\S+$/.test(s)) return false; // Name-Realm: Spieler
+  if (/^[^\s-]+-\S.*$/.test(s)) return false; // Vorname-<irgendwas> (auch Shard mit Leerzeichen/Ziffern, "Torvak-Realm 10 RP"): immer Spieler
   if (NPC_WORDS.test(s)) return true;
   if (/\s/.test(s)) return !/^\S+\s.*-\S+$/.test(s); // Leerzeichen: Figur der Welt, außer mit Realm hinten
   return false;

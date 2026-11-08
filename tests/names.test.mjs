@@ -162,22 +162,27 @@ describe("Chronik: Steckbrief und Dungeon-Gruppe", () => {
 });
 
 describe("Anonymisierung mit Vollnamen", () => {
-  const char = makeDb({ info: { name: "Lenu", project: 18 }, lines: ["1~GM~Kaelira-Barrowstone~PRIEST~6~2", "2~GM~Torvak-Realm10~MAGE~6~2"] }).chars[GUID];
+  const char = makeDb({ info: { name: "Lenu", project: 18 }, lines: ["1~GM~Kaelira-Barrowstone~PRIEST~6~2", "2~GM~Torvak-Realm 10 RP~MAGE~6~2"] }).chars[GUID];
 
   it("looksLikeNpc: Vollname mit Leerzeichen ist ein Spieler, sobald die Schreibweise bekannt ist", () => {
     expect(looksLikeNpc("Kaelira Barrowstone")).toBe(true);
     expect(looksLikeNpc("Kaelira Barrowstone", new Set(["Kaelira Barrowstone"]))).toBe(false);
     expect(looksLikeNpc("Auktionshaus der Allianz", new Set(["Kaelira Barrowstone"]))).toBe(true);
     expect(looksLikeNpc("Kaelira-Barrowstone")).toBe(false);
+    expect(looksLikeNpc("Torvak-Realm 10 RP")).toBe(false);
+    expect(looksLikeNpc("Torvak-CAMWOWEU5Realm10RP")).toBe(false);
+    expect(looksLikeNpc("Stadtwache von Sturmwind")).toBe(true);
   });
 
   it("Anzeigeform Vorname Nachname wird als Spieler ersetzt; ein Shard wird nicht zum Nachnamen", () => {
     const anon = createAnonymizer(char, "de");
-    expect(anon.names).toEqual(["Kaelira-Barrowstone", "Torvak-Realm10"]);
+    expect(anon.names).toEqual(["Kaelira-Barrowstone", "Torvak-Realm 10 RP"]);
     expect(anon.alias("Kaelira Barrowstone")).toBe("Gefährte 1");
     expect(anon.alias("Kaelira-Barrowstone")).toBe("Gefährte 1");
     expect(anon.scrub("Mit Kaelira Barrowstone und Kaelira unterwegs")).toBe("Mit Gefährte 1 und Gefährte 1 unterwegs");
     expect(anon.scrub("Torvak kam")).toBe("Gefährte 2 kam");
+    expect(anon.scrub("Torvak-Realm 10 RP kam")).toBe("Gefährte 2 kam");
+    expect(anon.alias("Torvak-Realm 10 RP")).toBe("Gefährte 2");
     expect(anon.alias("Stadtwache Lenu")).toBe("Stadtwache Lenu");
     const out = anonymizeChar(char, anon);
     expect(JSON.stringify(out.log)).not.toContain("Kaelira");

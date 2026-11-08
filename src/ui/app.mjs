@@ -14,7 +14,7 @@ import { renderChroniclePanel } from "../chronik/index.mjs";
 import { icon, portraitImg, classSpan } from "./identity.mjs";
 import { buildPrintBook } from "./print.mjs";
 import { renderLicenses } from "./licenses.mjs";
-import { parseLinkFragment, matchLinkCharacter } from "./link-preset.mjs";
+import { parseLinkFragment, resolveLinkCharacter } from "./link-preset.mjs";
 
 const LANG_KEY = "iae-lang";
 const VIEWS = [["journey", "tabJourney", "tab-reise"], ["chronicle", "tabChronicle", "tab-chronik"]];
@@ -82,7 +82,7 @@ export function startApp(doc, win) {
     printAnon: false, // „Andere Spieler ausblenden“ für den Druck (Standard aus)
     printing: false,
     printMsg: null, // printPreparing | printReady | printFailed
-    preset: readPreset(win), // Vorauswahl aus dem Link des Addons: { c, v } oder null
+    preset: readPreset(win), // Vorauswahl aus dem Link des Addons: { g, c, v } oder null
   };
   let printToken = 0;
   let printRoot = null; // Druckbuch (eigener Knoten neben #app, nur im Druck sichtbar)
@@ -180,10 +180,13 @@ export function startApp(doc, win) {
     if (!p) return;
     state.preset = null;
     clearFragment(win);
-    const guid = matchLinkCharacter(characters, p.c);
-    if (guid) {
-      selectCharacter(guid);
+    const r = resolveLinkCharacter(characters, p);
+    if (r.status === "found") {
+      selectCharacter(r.guid);
       if (state.journal) state.view = p.v;
+    } else if (r.status === "ambiguous") {
+      selectCharacter(null); // nicht raten: die Kartenauswahl zeigen
+      state.notice = { key: "presetAmbiguous", args: [] };
     } else if (!state.notice) {
       state.notice = { key: "presetNoMatch", args: [] };
     }

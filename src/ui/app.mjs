@@ -8,6 +8,7 @@ import { t } from "./texts.mjs";
 import { safeText } from "./safe-text.mjs";
 import { loadSvFile, errorMessage } from "./load-file.mjs";
 import { pickDroppedFile, hasFiles } from "./drop.mjs";
+import { renderChroniclePanel } from "../chronik/index.mjs";
 
 const LANG_KEY = "iae-lang";
 
@@ -262,10 +263,13 @@ export function startApp(doc, win) {
       c ? el(doc, "p", "journal-meta", t(state.lang, "charSummaryLines", fmtNumber(state.lang, c.lines))) : null,
     );
     const isJourney = state.view === "journey";
-    const panel = el(doc, "section", "view-panel placeholder",
-      el(doc, "h2", "panel-title", t(state.lang, isJourney ? "journeyTitle" : "chronicleTitle")),
-      el(doc, "p", "panel-soon", t(state.lang, isJourney ? "journeySoon" : "chronicleSoon")),
-    );
+    // Reiter "Chronik": Ansicht aus src/chronik (W5); der Reiter "Reise" bleibt Platzhalter bis W4
+    const panel = isJourney
+      ? el(doc, "section", "view-panel placeholder",
+          el(doc, "h2", "panel-title", t(state.lang, "journeyTitle")),
+          el(doc, "p", "panel-soon", t(state.lang, "journeySoon")),
+        )
+      : renderChroniclePanel(doc, { db: state.file.db, guid: state.guid, journal: state.journal, lang: state.lang });
     return el(doc, "div", "journal-shell", head, tabs(), panel);
   }
 

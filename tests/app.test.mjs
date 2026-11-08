@@ -32,7 +32,7 @@ describe("Seite", () => {
     expect(byClass(en.appRoot, "site-footer")[0].textContent).toContain("not affiliated with Blizzard Entertainment");
   });
 
-  it("lädt die Datei und zeigt den zuletzt gespielten Charakter mit den Platzhaltern für Reise und Chronik", async () => {
+  it("lädt die Datei und zeigt den zuletzt gespielten Charakter mit dem Platzhalter für die Reise und der Chronik", async () => {
     const { app, appRoot, doc } = boot({ language: "de-DE" });
     await app.loadFile(makeFile("InkAndEmbers.lua", SAMPLE));
     expect(app.state.error).toBeNull();
@@ -41,7 +41,8 @@ describe("Seite", () => {
     expect(byClass(appRoot, "dropzone")).toHaveLength(0);
     expect(byClass(appRoot, "placeholder")[0].textContent).toContain("Die Reise");
     findAll(appRoot, (n) => n.className.split(" ").includes("tab-btn"))[1].click();
-    expect(byClass(appRoot, "placeholder")[0].textContent).toContain("Chronik & Statistik");
+    expect(byClass(appRoot, "chron-book")).toHaveLength(1); // Chronik & Statistik (src/chronik)
+    expect(byClass(appRoot, "placeholder")).toHaveLength(0);
     expect(doc.title).toContain("Mirela");
   });
 

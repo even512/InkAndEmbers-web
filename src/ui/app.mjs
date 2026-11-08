@@ -35,10 +35,20 @@ function storeLang(win, lang) {
   }
 }
 
+// Systemsprache: erste Sprache aus navigator.languages (sonst navigator.language), die de oder en ist; sonst en
+export function systemLang(nav) {
+  const list = nav && Array.isArray(nav.languages) && nav.languages.length ? nav.languages : [nav && nav.language];
+  for (const l of list) {
+    const m = /^(de|en)(?:[-_]|$)/i.exec(typeof l === "string" ? l : "");
+    if (m) return m[1].toLowerCase();
+  }
+  return "en";
+}
+
 export function startApp(doc, win) {
   const stored = readStoredLang(win);
   const state = {
-    lang: stored || (win.navigator && /^de\b/i.test(win.navigator.language || "") ? "de" : "en"),
+    lang: stored || systemLang(win.navigator),
     langChosen: !!stored,
     file: null, // { name, db, characters, schemaWarning }
     guid: null,
@@ -153,7 +163,6 @@ export function startApp(doc, win) {
       const opened = await loadSvFile(file);
       if (token !== loadToken) return; // eine neuere Auswahl hat übernommen
       state.file = { name: opened.name, db: opened.db, characters: opened.characters, schemaWarning: opened.schemaWarning };
-      if (!state.langChosen && opened.language) state.lang = opened.language;
       // zuletzt gespielter Charakter zuerst (listCharacters sortiert nach lastSeen)
       selectCharacter(opened.characters.length > 0 ? opened.characters[0].guid : null);
     } catch (e) {

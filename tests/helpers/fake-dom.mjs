@@ -63,7 +63,7 @@ export function findAll(node, pred, out = []) {
   return out;
 }
 
-export function fakeEnv({ language = "en-US", stored = null } = {}) {
+export function fakeEnv({ language = "en-US", languages, stored = null } = {}) {
   const created = [];
   const appRoot = makeNode("div", created);
   const body = makeNode("body", created);
@@ -78,7 +78,7 @@ export function fakeEnv({ language = "en-US", stored = null } = {}) {
   };
   const store = new Map(stored ? Object.entries(stored) : []);
   const win = makeNode("window");
-  win.navigator = { language };
+  win.navigator = languages ? { language: languages[0], languages } : { language };
   win.localStorage = {
     getItem: (k) => (store.has(k) ? store.get(k) : null),
     setItem: (k, v) => store.set(k, String(v)),

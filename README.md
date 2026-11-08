@@ -18,7 +18,7 @@ Fanprojekt, nicht mit Blizzard Entertainment verbunden. World of Warcraft und Ka
    `WTF\Account\<Konto>\SavedVariables\` (bei Forever im Ordner `_forever_`, sonst `_retail_`). Am besten nach dem Ausloggen
    nehmen, dann ist alles gesichert.
 3. Der zuletzt gespielte Charakter wird gezeigt; oben im Auswahlfeld lässt sich ein anderer wählen.
-4. Oben rechts zwischen **DE** und **EN** umschalten (ohne Wahl gilt die Sprache der Datei, sonst die des Browsers).
+4. Oben rechts zwischen **DE** und **EN** umschalten (ohne Wahl gilt die Systemsprache des Browsers, sonst Englisch; die Wahl wird gemerkt).
 5. **Drucken / PDF** (im Charakter-Kopf): baut ein Druckbuch (A4, jedes Kapitel auf einer neuen Seite, Karten als Standbild
    der Kapitelroute, keine Bedienelemente) und öffnet den Druckdialog; dort „Als PDF speichern“ wählen. Mit
    **Andere Spieler ausblenden** stehen statt fremder Namen „Gefährte 1, 2, …“ im Druck.

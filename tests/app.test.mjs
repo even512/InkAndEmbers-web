@@ -57,16 +57,24 @@ describe("Seite", () => {
     expect(doc.documentElement.attributes.lang).toBe("en");
     expect(byClass(appRoot, "tab-btn")[0].textContent).toBe("Journey");
     expect(store.get("iae-lang")).toBe("en");
-    // eine gespeicherte Sprache gewinnt gegen Browser und Datei
+    // eine gespeicherte Sprache gewinnt gegen das System
     const again = boot({ language: "de-DE", stored: { "iae-lang": "en" } });
     await again.app.loadFile(makeFile("InkAndEmbers.lua", SAMPLE));
     expect(again.app.state.lang).toBe("en");
   });
 
-  it("nimmt ohne Wahl die Sprache aus der Datei", async () => {
-    const { app } = boot({ language: "en-US" });
+  it("folgt der Systemsprache (erste de/en-Sprache, sonst en) und ignoriert die Sprache der Datei", async () => {
+    expect(boot({ language: "de-AT" }).app.state.lang).toBe("de");
+    expect(boot({ language: "en-US" }).app.state.lang).toBe("en");
+    expect(boot({ languages: ["fr-FR", "de-DE", "en"] }).app.state.lang).toBe("de");
+    expect(boot({ languages: ["fr-FR", "es"] }).app.state.lang).toBe("en");
+    const stored = boot({ language: "de-DE", stored: { "iae-lang": "en" } });
+    expect(stored.app.state.lang).toBe("en");
+    // die Datei (Spielsprache de) ändert die Sprache nicht
+    const { app, doc } = boot({ language: "en-US" });
     await app.loadFile(makeFile("InkAndEmbers.lua", SAMPLE));
-    expect(app.state.lang).toBe("de");
+    expect(app.state.lang).toBe("en");
+    expect(doc.documentElement.attributes.lang).toBe("en");
   });
 
   it("wechselt den Charakter über das Auswahlfeld", async () => {

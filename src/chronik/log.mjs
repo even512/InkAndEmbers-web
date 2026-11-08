@@ -39,6 +39,20 @@ export function toNum(v) {
   return null;
 }
 
+// Gegenstands-Schlüssel einer Beutezeile (README „Log format“): "<itemID>[.s<suffix>][.b<bonus>]{0,8}"; alles andere
+// (abgeschnittene Einträge, fremde Zeichen, überlange Texte) gilt als fehlend
+export const ITEM_KEY_RE = /^\d+(\.s-?\d+)?(\.b\d+){0,8}$/;
+export function itemKey(v) {
+  return typeof v === "string" && v.length <= 120 && ITEM_KEY_RE.test(v) ? v : null;
+}
+
+// Gegenstandsqualität: ganze Zahl, auf 0..7 geklemmt (0 grau … 7 Erbstück); kein Zahlwert -> null
+export function itemQuality(v) {
+  const n = typeof v === "number" ? v : toNum(v);
+  if (n === null || !Number.isFinite(n)) return null;
+  return Math.min(7, Math.max(0, Math.floor(n)));
+}
+
 export const isFiniteNum = (v) => typeof v === "number" && Number.isFinite(v);
 
 // Stufe des Charakters in einer Zeile (bei KI steht die eigene Stufe in plevel); nur 1..200
@@ -197,7 +211,8 @@ export function makeCtx(db, guid) {
     encounterName: (id) => nameIn(snaps.encounters, id),
     npcName: (id) => nameIn(char.npcs, id),
     itemSnap: (key) => {
-      const e = entry(snaps.items, itemIdOf(key));
+      const k = itemKey(key);
+      const e = k ? entry(snaps.items, itemIdOf(k)) : undefined;
       return isTable(e) ? e : null;
     },
     questTitle: (id) => {

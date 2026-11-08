@@ -3,7 +3,7 @@
 // Schwellen, dieselbe Zählweise, dieselben Belege. Reine Berechnung auf den Zeilen des Charakters, keine Texte, kein DOM.
 // Unterschied zum Addon: der Index (Listen/Zähler) wird hier aus den Zeilen selbst gebildet; "Tode" gibt es als Medaille nicht.
 import { isTable } from "../core/lua-parse.mjs";
-import { fld, num, levelOf, validLevel, toNum, posId, snapGroup, bsearchLE, counterValue, isFiniteNum, activeSeconds } from "./log.mjs";
+import { fld, num, levelOf, validLevel, toNum, posId, snapGroup, bsearchLE, counterValue, isFiniteNum, activeSeconds, itemQuality } from "./log.mjs";
 
 export const TIER_ORDER = ["bronze", "silver", "gold"];
 
@@ -205,10 +205,10 @@ const onceOf = (hit) => [hit ? 1 : 0, [hit || null]];
 
 // Güte einer Beutezeile: Feld quality, sonst Güte des Gegenstands im Schnappschuss; null = unbekannt
 function lootQuality(C, ev) {
-  const q = num(ev, "quality");
+  const q = itemQuality(num(ev, "quality"));
   if (q !== null) return q;
   const snap = C.ctx.itemSnap(fld(ev, "item"));
-  return snap ? toNum(snap.quality) : null;
+  return snap ? itemQuality(snap.quality) : null;
 }
 
 // Auswertung je Medaille: (C, steps) -> [Zählwert, Belege je Stufe]
@@ -301,7 +301,7 @@ EVAL.epic = (C) => {
   const mo = C.mo("first_epic");
   if (mo) return onceOf(C.hit(mo));
   for (const ev of C.list("LT")) {
-    const q = num(ev, "quality");
+    const q = itemQuality(num(ev, "quality"));
     if (q !== null && q >= 4) return onceOf(C.hit(ev));
   }
   return onceOf(C.snap("first_epic"));

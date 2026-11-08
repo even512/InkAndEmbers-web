@@ -34,7 +34,7 @@ p { margin: 0; }
 
 /* Text aus der Datei bleibt in seinem Element (Bidi) */
 .journal-name, .hero-meta, .char-card span, .file-name b, .tip-title, .tip-line, .chapter-chip, .journey-title,
-.chron-book :is(p, li, dt, dd, span, strong, h2, h3, h4, td, th) { unicode-bidi: isolate; }
+.chron-book :is(p, li, dt, dd, span, strong, h1, h2, h3, h4, td, th, figcaption, .stat-value, .stat-sub, .stat-label) { unicode-bidi: isolate; }
 
 /* ---- Knöpfe ---------------------------------------------------------------------------------------------- */
 .btn {

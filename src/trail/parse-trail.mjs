@@ -153,6 +153,7 @@ export function breaksFromLog(events) {
 
 // Vorrang, wenn mehrere Gründe zugleich eine neue Strecke beginnen lassen
 const REASON_RANK = { hearth: 1, instance: 2, login: 3, gap: 4, death: 5, flight: 6, jump: 7, zone: 8, map: 9 };
+const isReason = (r) => typeof r === "string" && Object.prototype.hasOwnProperty.call(REASON_RANK, r);
 const better = (a, b) => (!a ? b : !b ? a : REASON_RANK[b] < REASON_RANK[a] ? b : a);
 
 // Blöcke -> Strecken. Neue Strecke bei Kartenwechsel (map), Marke z (zone), nach d (death) oder f (flight), bei einer
@@ -164,7 +165,7 @@ const better = (a, b) => (!a ? b : !b ? a : REASON_RANK[b] < REASON_RANK[a] ? b 
 // marks: [{ kind: zone|death|takeoff|landing, mapID, x, y, t }]
 export function segmentTrail(parsed, options = {}) {
   const blocks = parsed && Array.isArray(parsed.blocks) ? parsed.blocks : [];
-  const breaks = (Array.isArray(options.breaks) ? options.breaks : []).filter((b) => b && Number.isFinite(b.t) && REASON_RANK[b.reason]);
+  const breaks = (Array.isArray(options.breaks) ? options.breaks : []).filter((b) => b && Number.isFinite(b.t) && isReason(b.reason));
   breaks.sort((a, b) => a.t - b.t);
   const BG = SEGMENT.BREAK_GAP, BD2 = SEGMENT.BREAK_DIST * SEGMENT.BREAK_DIST, LG = SEGMENT.LINK_GAP;
   const segments = [], flights = [], hops = [], marks = [];

@@ -2,7 +2,7 @@
 // addon/InkAndEmbers/journal/model/Dungeons.lua (visitsOf, build, bossesOf, detail, group) und Companions.lua (aggregate, between).
 // Ein Lauf ist die Kette von Besuchen derselben Instanz und Schwierigkeit mit höchstens GAP Sekunden Pause (Geisterlauf, Verbindungsabbruch,
 // kurzer Gang zum Händler). Reine Berechnung, keine Texte, kein DOM; Namen bleiben Rohtext aus der Datei.
-import { fld, num, posId, isFiniteNum, eachIn, sessionEnd } from "./log.mjs";
+import { fld, num, posId, isFiniteNum, eachIn, sessionEnd, itemKey, itemQuality, bsearchLE } from "./log.mjs";
 import { itemIdOf } from "../core/journal-model.mjs";
 
 export const GAP = 1800; // Sekunden: eine kürzere Pause zwischen zwei Besuchen derselben Instanz lässt es einen Lauf bleiben
@@ -163,12 +163,13 @@ export function buildDungeons(ctx) {
     run.deathsCount = deathsIn(ctx, run);
     out.push(run);
   }
-  // Instanz zu einem Zeitpunkt (für Tode ohne Instanzangabe): der Besuch, der t umfasst
+  // Instanz zu einem Zeitpunkt (für Tode ohne Instanzangabe): der letzte Besuch, der vor t begann, wenn er t umfasst.
+  // Binärsuche über die Anfänge (visits sind nach t0 sortiert), damit viele Tode × viele Besuche nicht quadratisch werden.
+  const starts = visits.map((v) => v.t0);
   const instanceAt = (t) => {
-    for (let i = visits.length - 1; i >= 0; i--) {
-      if (visits[i].t0 <= t) return t <= visits[i].t1 ? visits[i].id : null;
-    }
-    return null;
+    if (!Number.isFinite(t)) return null;
+    const i = bsearchLE(starts, t);
+    return i >= 0 && t <= visits[i].t1 ? visits[i].id : null;
   };
   return { runs: out, count: out.length, truncated, instanceAt };
 }
@@ -219,14 +220,14 @@ export function dungeonDetail(ctx, run) {
   const found = [];
   const collect = (code, mine) => {
     eachIn(ctx.list(code), run.intervals, (r) => {
-      const key = fld(r, "item");
+      const key = itemKey(fld(r, "item"));
       const itemID = key ? posId(itemIdOf(key)) : null;
       if (!itemID) return;
       const who = !mine ? fld(r, "who") : null;
       if (!mine && !who) return; // ein Gruppenfund ohne lesbaren Empfänger lässt sich niemandem zuordnen
       const snap = ctx.itemSnap(key);
-      let q = num(r, "quality");
-      if (q === null && snap && Number.isFinite(Number(snap.quality))) q = Number(snap.quality);
+      let q = itemQuality(num(r, "quality"));
+      if (q === null && snap) q = itemQuality(snap.quality);
       if (q !== null && q < 2) return; // nur grün und besser
       const n = num(r, "count");
       found.push({
@@ -234,7 +235,7 @@ export function dungeonDetail(ctx, run) {
         seq: found.length,
         key,
         itemID,
-        quality: q === null ? null : Math.floor(q),
+        quality: q,
         count: n !== null && n > 1 && n < 100000 ? Math.floor(n) : 1,
         name: snap && typeof snap.name === "string" && snap.name !== "" ? snap.name : null,
         source: mine ? fld(r, "source") : null,
@@ -375,11 +376,32 @@ function bossWinWindows(ctx, run) {
   return out;
 }
 
-function touches(ivs, windows) {
-  for (let k = 0; k < ivs.length; k += 2) {
-    for (let w = 0; w < windows.length; w += 2) {
-      if (ivs[k] <= windows[w + 1] && ivs[k + 1] >= windows[w]) return true;
-    }
+// flache Intervall-Liste [a0, b0, a1, b1, …] -> sortierte, zusammengeführte Paare (höchstens TOUCH_PAIRS_MAX, die frühesten)
+export const TOUCH_PAIRS_MAX = 20000;
+function mergedPairs(flat) {
+  const pairs = [];
+  for (let k = 0; k + 1 < flat.length && pairs.length < TOUCH_PAIRS_MAX; k += 2) {
+    const a = flat[k], b = flat[k + 1];
+    if (Number.isFinite(a) && Number.isFinite(b) && b >= a) pairs.push([a, b]);
+  }
+  pairs.sort((p, q) => p[0] - q[0]);
+  const out = [];
+  for (const p of pairs) {
+    const last = out[out.length - 1];
+    if (last && p[0] <= last[1]) last[1] = Math.max(last[1], p[1]);
+    else out.push([p[0], p[1]]);
+  }
+  return out;
+}
+
+// überschneidet sich eines der Intervalle mit einem der Fenster? Zusammenführen + ein gemeinsamer Durchlauf statt n × m
+export function touches(ivs, windows) {
+  const A = mergedPairs(ivs), B = mergedPairs(windows);
+  let i = 0, j = 0;
+  while (i < A.length && j < B.length) {
+    if (A[i][0] <= B[j][1] && A[i][1] >= B[j][0]) return true;
+    if (A[i][1] < B[j][1]) i++;
+    else j++;
   }
   return false;
 }

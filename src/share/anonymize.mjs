@@ -34,6 +34,9 @@ export const NAME_FIELDS = Object.freeze({
   LF: [{ i: 6, kind: "people" }],
 });
 
+// Feldliste zu einem Kürzel aus der Datei; nur eigene Schlüssel ("constructor", "__proto__" … treffen nie den Prototyp)
+const specsFor = (code) => (typeof code === "string" && Object.prototype.hasOwnProperty.call(NAME_FIELDS, code) ? NAME_FIELDS[code] : null);
+
 // Zähler, deren Schlüssel oder Inhalte andere Spieler nennen
 export const SENSITIVE_COUNTERS = Object.freeze(["mates", "duels", "pvp", "trade", "mail"]);
 
@@ -90,7 +93,7 @@ export function collectForeignNames(char) {
     for (let i = 1; i < lines.length; i++) {
       const parts = lines[i].split("~");
       if (parts.length < 2) continue;
-      const specs = NAME_FIELDS[parts[1]];
+      const specs = specsFor(parts[1]);
       if (!specs) continue;
       const f = parts.slice(2);
       const t = epoch + (Number(parts[0]) || 0);
@@ -153,7 +156,7 @@ export function createAnonymizer(char, lang = "de") {
 
 // Log-Zeile umschreiben (Felder nach dem Kürzel)
 function rewriteFields(code, f, anon) {
-  const specs = NAME_FIELDS[code];
+  const specs = specsFor(code);
   if (!specs) return f;
   const out = f.slice();
   for (const sp of specs) {
@@ -186,7 +189,7 @@ export function anonymizeChar(char, anon) {
     const lines = block.split("\n");
     for (let i = 1; i < lines.length; i++) {
       const parts = lines[i].split("~");
-      if (parts.length < 3 || !NAME_FIELDS[parts[1]]) continue;
+      if (parts.length < 3 || !specsFor(parts[1])) continue;
       lines[i] = [parts[0], parts[1], ...rewriteFields(parts[1], parts.slice(2), anon)].join("~");
     }
     log[String(++k)] = lines.join("\n");

@@ -279,21 +279,22 @@ export function normLang(l) {
 }
 
 // text by dotted key with placeholders {0}, {1} ... (unknown key -> the key, never a crash)
+// walk a dotted key through the text table; only own keys count (no "constructor", "__proto__", "toString" from the prototype)
+function lookup(table, key) {
+  let v = table;
+  for (const part of String(key).split(".")) v = v && typeof v === "object" && Object.hasOwn(v, part) ? v[part] : undefined;
+  return v;
+}
+
 export function tr(lang, key, ...args) {
-  let v = TEXTS[normLang(lang)];
-  for (const part of String(key).split(".")) v = v && typeof v === "object" ? v[part] : undefined;
-  if (v === undefined) {
-    v = TEXTS.de;
-    for (const part of String(key).split(".")) v = v && typeof v === "object" ? v[part] : undefined;
-  }
+  let v = lookup(TEXTS[normLang(lang)], key);
+  if (v === undefined) v = lookup(TEXTS.de, key);
   if (typeof v !== "string") return String(key);
   return v.replace(/\{(\d+)\}/g, (m, i) => (args[Number(i)] === undefined || args[Number(i)] === null ? "" : String(args[Number(i)])));
 }
 
 export function raw(lang, key) {
-  let v = TEXTS[normLang(lang)];
-  for (const part of String(key).split(".")) v = v && typeof v === "object" ? v[part] : undefined;
-  return v;
+  return lookup(TEXTS[normLang(lang)], key);
 }
 
 function locale(lang) {

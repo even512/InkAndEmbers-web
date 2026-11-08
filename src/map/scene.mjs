@@ -9,6 +9,8 @@ import { safeText } from "../ui/safe-text.mjs";
 export const MARKER_KINDS = Object.freeze(["level", "death", "boss", "rare", "discovery"]);
 export const THIN = 0.0006; // Ausdünnen: Mindestabstand zweier gezeichneter Punkte (Einheiten der Zielkarte)
 export const LABELS_MAX = 40;
+export const SCENE_POINTS_MAX = 200000; // mehr Punkte je Szene: gröber ausdünnen (riesige oder präparierte Dateien)
+export const SCENE_MARKERS_MAX = 5000; // mehr Marker je Szene: die wichtigsten Arten zuerst, der Rest entfällt
 export const NAME_MAX = 80;
 
 const RARE_MOMENTS = new Set(["first_rare", "first_elite", "first_boss", "kill"]);
@@ -66,14 +68,24 @@ export function levelTrack(journal, events) {
   return { first, steps };
 }
 
+// letzter Index i mit list[i].t <= t (list nach t sortiert) oder -1; Binärsuche
+function lastAtOrBefore(list, t) {
+  let lo = 0, hi = list.length - 1, found = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (list[mid].t <= t) {
+      found = mid;
+      lo = mid + 1;
+    } else hi = mid - 1;
+  }
+  return found;
+}
+
 export function levelAt(track, t) {
   if (!track) return null;
-  let l = track.first;
-  for (const s of track.steps) {
-    if (s.t <= t) l = s.level;
-    else break;
-  }
-  return l;
+  const steps = Array.isArray(track.steps) ? track.steps : [];
+  const i = Number.isNaN(t) ? -1 : lastAtOrBefore(steps, t);
+  return i >= 0 ? steps[i].level : track.first;
 }
 
 // Spielzeit zu jedem Zeitpunkt: letzte /played-Zeile (PL total) plus aktive Zeit auf der Spur seitdem (Lücken über
@@ -119,11 +131,8 @@ function activeAt(track, t) {
 export function playedAt(track, t) {
   if (!track || !Number.isFinite(t)) return null;
   if (!track.pl.length) return track.ts.length ? activeAt(track, t) : null;
-  let base = null;
-  for (const p of track.pl) {
-    if (p.t <= t) base = p;
-    else break;
-  }
+  const bi = lastAtOrBefore(track.pl, t);
+  const base = bi >= 0 ? track.pl[bi] : null;
   if (base) return base.total + Math.max(0, activeAt(track, t) - activeAt(track, base.t));
   const first = track.pl[0];
   return Math.max(0, first.total - (activeAt(track, first.t) - activeAt(track, t)));
@@ -189,11 +198,11 @@ export function chooseMap(mode, baseID, index) {
   return displayMap(baseID, index);
 }
 
-function pushThin(line, x, y, t, force) {
+function pushThin(line, x, y, t, force, thin = THIN) {
   const n = line.x.length;
   if (n > 0 && !force) {
     const dx = x - line.x[n - 1], dy = y - line.y[n - 1];
-    if (dx * dx + dy * dy < THIN * THIN) return;
+    if (dx * dx + dy * dy < thin * thin) return;
   }
   line.x.push(x);
   line.y.push(y);
@@ -241,8 +250,21 @@ export function buildLabels(mapID, { events, trail, index, names } = {}) {
 
 // Alles für eine Zielkarte vorbereiten (einmal je Karte, danach nur noch zeichnen).
 // -> { mapID, lines: [{ x, y, t }], flights: [{ x0, y0, x1, y1, t0, t1 }], markers: [{ ...marker, px, py }], labels, bounds }
-export function prepareMapScene(trail, mapID, { markers = [], labels = [], index } = {}) {
-  const lines = [], flights = [], placed = [];
+// Wichtigkeit der Markerarten, wenn eine Szene mehr als SCENE_MARKERS_MAX Marker hätte (kleiner = wichtiger)
+const MARKER_RANK = { death: 0, boss: 1, level: 2, rare: 3, discovery: 4 };
+const markerRank = (m) => (m && Object.prototype.hasOwnProperty.call(MARKER_RANK, m.kind) ? MARKER_RANK[m.kind] : 5);
+
+// höchstens max Marker: wichtigste Arten zuerst, innerhalb einer Art die früheren; Ergebnis wieder nach Zeit
+export function capMarkers(list, max = SCENE_MARKERS_MAX) {
+  if (list.length <= max) return list;
+  const keep = list.map((m, i) => ({ m, i })).sort((a, b) => markerRank(a.m) - markerRank(b.m) || a.i - b.i).slice(0, max);
+  return keep.sort((a, b) => a.i - b.i).map((k) => k.m);
+}
+
+// Linien einer Szene projizieren und ausdünnen (thin = Mindestabstand); -> { lines, points, bounds }
+function sceneLines(trail, aff, thin) {
+  const lines = [];
+  let points = 0;
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
   const grow = (p) => {
     if (p.x < x0) x0 = p.x;
@@ -250,18 +272,13 @@ export function prepareMapScene(trail, mapID, { markers = [], labels = [], index
     if (p.y < y0) y0 = p.y;
     if (p.y > y1) y1 = p.y;
   };
-  const cache = new Map();
-  const aff = (id) => {
-    if (!cache.has(id)) cache.set(id, affine(id, mapID, index));
-    return cache.get(id);
-  };
   for (const s of (trail && Array.isArray(trail.segments) ? trail.segments : [])) {
     const a = aff(s.mapID);
     if (!a) continue;
     const line = { x: [], y: [], t: [] };
     if (s.link) {
       const la = aff(s.link.mapID);
-      if (la) pushThin(line, la.ox + (la.sx * s.link.x) / 10000, la.oy + (la.sy * s.link.y) / 10000, s.link.t, true);
+      if (la) pushThin(line, la.ox + (la.sx * s.link.x) / 10000, la.oy + (la.sy * s.link.y) / 10000, s.link.t, true, thin);
     }
     let any = false;
     for (let i = 0; i < s.n; i++) {
@@ -270,9 +287,47 @@ export function prepareMapScene(trail, mapID, { markers = [], labels = [], index
         any = true;
         if (p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1) grow(p);
       }
-      pushThin(line, p.x, p.y, s.t[i], i === s.n - 1);
+      pushThin(line, p.x, p.y, s.t[i], i === s.n - 1, thin);
     }
-    if (any && line.x.length) lines.push(line);
+    if (any && line.x.length) {
+      lines.push(line);
+      points += line.x.length;
+    }
+  }
+  return { lines, points, bounds: x1 >= x0 ? { x0, x1, y0, y1 } : null };
+}
+
+// jeden k-ten Punkt einer Linie behalten (erster und letzter bleiben) – letzte Bremse nach dem Ausdünnen
+function decimate(line, k) {
+  const out = { x: [], y: [], t: [] };
+  const n = line.x.length;
+  for (let i = 0; i < n; i++) {
+    if (i % k !== 0 && i !== n - 1) continue;
+    out.x.push(line.x[i]);
+    out.y.push(line.y[i]);
+    out.t.push(line.t[i]);
+  }
+  return out;
+}
+
+export function prepareMapScene(trail, mapID, { markers = [], labels = [], index, maxPoints = SCENE_POINTS_MAX, maxMarkers = SCENE_MARKERS_MAX } = {}) {
+  const flights = [], placed = [];
+  const cache = new Map();
+  const aff = (id) => {
+    if (!cache.has(id)) cache.set(id, affine(id, mapID, index));
+    return cache.get(id);
+  };
+  // zu viele Punkte: Mindestabstand verdoppeln (höchstens sechsmal), danach jeden k-ten Punkt behalten
+  let thin = THIN;
+  let built = sceneLines(trail, aff, thin);
+  for (let round = 0; built.points > maxPoints && round < 6; round++) {
+    thin *= 2;
+    built = sceneLines(trail, aff, thin);
+  }
+  let lines = built.lines;
+  if (built.points > maxPoints) {
+    const k = Math.ceil(built.points / maxPoints);
+    lines = lines.map((l) => decimate(l, k));
   }
   for (const f of (trail && Array.isArray(trail.flights) ? trail.flights : [])) {
     const p = project(f.from.mapID, f.from.x / 10000, f.from.y / 10000, mapID, index);
@@ -283,6 +338,5 @@ export function prepareMapScene(trail, mapID, { markers = [], labels = [], index
     const p = project(m.mapID, m.x, m.y, mapID, index);
     if (p && p.x >= -0.02 && p.x <= 1.02 && p.y >= -0.02 && p.y <= 1.02) placed.push({ ...m, px: p.x, py: p.y });
   }
-  const bounds = x1 >= x0 ? { x0, x1, y0, y1 } : null;
-  return { mapID, lines, flights, markers: placed, labels, bounds };
+  return { mapID, lines, flights, markers: capMarkers(placed, maxMarkers), labels, bounds: built.bounds };
 }

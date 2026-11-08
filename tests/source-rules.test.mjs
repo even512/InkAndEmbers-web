@@ -65,7 +65,7 @@ describe("index.html", () => {
     expect(dirs.get("img-src")).toBe("'self' blob: data:");
     expect(dirs.get("font-src")).toBe("'self'");
     expect(dirs.get("media-src")).toBe("'self' blob:");
-    expect(dirs.get("worker-src")).toBe("'self' blob:");
+    expect(dirs.get("worker-src")).toBe("'self'");
     expect(dirs.get("base-uri")).toBe("'none'");
     expect(dirs.get("form-action")).toBe("'none'");
     expect(dirs.get("object-src")).toBe("'none'");

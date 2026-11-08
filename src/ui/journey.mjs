@@ -17,6 +17,7 @@ import { t } from "./texts.mjs";
 import { safeText } from "./safe-text.mjs";
 import { icon } from "./identity.mjs";
 import { createSharePanel } from "./share-panel.mjs";
+import { createLru } from "./lru.mjs";
 
 // Kartenbilder je Sprache (Ortsnamen stehen im Bild): maps/forever/<de|en>/<uiMapID>.webp, Rückfall en, dann Pergament
 export const MAP_DIR = "maps/forever/";
@@ -136,15 +137,15 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     destroyed: false,
   };
   PB.setRange(S.pb, 0, tl.length);
-  const scenes = new Map(); // mapID -> Szene
-  const images = new Map(); // "<lang>:<mapID>" -> { status: loading|ok|missing, img }
+  const scenes = createLru(); // mapID -> Szene (höchstens sechs, die zuletzt benutzten)
+  const images = createLru(); // "<lang>:<mapID>" -> { status: loading|ok|missing, img } (ebenso)
   const imgKey = (map) => S.lang + ":" + map.mapID;
   // Bild der aktuellen Karte; lädt die neue Sprache noch, bleibt das Bild der vorigen stehen (kein Aufblitzen)
   const curImage = () => {
     if (!S.map) return null;
-    const e = images.get(imgKey(S.map));
+    const e = images.peek(imgKey(S.map));
     if (e && e.status !== "loading") return e;
-    for (const [k, v] of images) if (k.endsWith(":" + S.map.mapID) && v.status === "ok") return v;
+    for (const [k, v] of images.entries()) if (k.endsWith(":" + S.map.mapID) && v.status === "ok") return v;
     return e || null;
   };
   const darkQuery = win.matchMedia ? win.matchMedia("(prefers-color-scheme: dark)") : null;
@@ -228,11 +229,10 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
   }
 
   function sceneFor(mapID) {
-    if (!scenes.has(mapID)) {
-      const labels = buildLabels(mapID, { events: data.events, trail: data.trail, names: data.names });
-      scenes.set(mapID, prepareMapScene(data.trail, mapID, { markers: data.markers, labels }));
-    }
-    return scenes.get(mapID);
+    const hit = scenes.get(mapID);
+    if (hit) return hit;
+    const labels = buildLabels(mapID, { events: data.events, trail: data.trail, names: data.names });
+    return scenes.set(mapID, prepareMapScene(data.trail, mapID, { markers: data.markers, labels }));
   }
 
   function imageFor(map) {

@@ -19,6 +19,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { STRIP } from "../src/ui/safe-text.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const DEFAULT_BUILD = "1.60.1.70862";
@@ -28,6 +29,7 @@ const BUILD_RE = /^\d{1,2}\.\d{1,3}\.\d{1,3}\.\d{1,7}$/;
 const MAX_CSV_BYTES = 5 * 1024 * 1024;
 const MAX_ROWS = 100000;
 const MAX_DEPTH = 8;
+const FETCH_TIMEOUT_MS = 30000;
 // plausible bounds of a map rect on its continent (zones can stick out past the edge; as Geo.RECT_MIN/MAX in the addon)
 export const RECT_MIN = -0.5;
 export const RECT_MAX = 1.5;
@@ -145,6 +147,11 @@ function check(table, parsed) {
   return parsed.rows;
 }
 
+// Kartenname aus der Tabelle: dieselbe Strip-Liste wie die Seite (safe-text: Steuer-, Bidi-, Zero-Width-, Tag-Zeichen)
+export function cleanName(v) {
+  return String(v ?? "").replace(STRIP, "").trim().slice(0, 80);
+}
+
 // Tabellen (CSV-Text je Name) -> index-Objekt
 export function buildIndex(csv, build) {
   if (!BUILD_RE.test(String(build))) throw new Error("Build ungültig: " + build);
@@ -158,7 +165,7 @@ export function buildIndex(csv, build) {
   for (const r of t.UiMap) {
     const id = int(r.ID, "UiMap.ID");
     if (id <= 0 || id > 1e6) throw new Error("UiMap.ID außerhalb: " + id);
-    const name = String(r.Name_lang).replace(/[\u0000-\u001f\u007f-\u009f]/g, "").slice(0, 80);
+    const name = cleanName(r.Name_lang);
     maps.set(id, { id, name, type: int(r.Type, "UiMap.Type"), parent: int(r.ParentUiMapID, "UiMap.ParentUiMapID") });
   }
 
@@ -259,19 +266,59 @@ export function serialize(index) {
   return JSON.stringify(index, null, 1) + "\n";
 }
 
-async function fetchTables(build, dir) {
-  mkdirSync(dir, { recursive: true });
+// Antworttext mit Größenbremse lesen: bricht ab, sobald mehr als max Bytes ankommen (Content-Length vorab geprüft)
+export async function readLimited(res, max, name) {
+  const len = Number(res.headers && typeof res.headers.get === "function" ? res.headers.get("content-length") : NaN);
+  if (Number.isFinite(len) && len > max) throw new Error(name + ": Antwort zu groß (" + len + " Bytes)");
+  if (!res.body || typeof res.body.getReader !== "function") {
+    const text = await res.text();
+    if (Buffer.byteLength(text) > max) throw new Error(name + ": Antwort zu groß");
+    return text;
+  }
+  const reader = res.body.getReader();
+  const chunks = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel().catch(() => {});
+      throw new Error(name + ": Antwort zu groß (über " + max + " Bytes)");
+    }
+    chunks.push(Buffer.from(value));
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+// alle fünf Tabellen laden (fester Host, Zeitlimit, Größenbremse), ERST alle prüfen (buildIndex), dann schreiben.
+// fetchImpl ist für Tests austauschbar.
+export async function fetchTables(build, dir, { fetchImpl = fetch, timeoutMs = FETCH_TIMEOUT_MS, write = true } = {}) {
+  if (!BUILD_RE.test(String(build))) throw new Error("Build ungültig: " + build);
+  const csv = {};
   for (const name of TABLES) {
     // fester Host, Tabelle aus der Whitelist, Build per Regex geprüft
     const url = new URL("https://" + WAGO_HOST + "/db2/" + encodeURIComponent(name) + "/csv");
     url.searchParams.set("build", build);
-    const res = await fetch(url, { redirect: "error" });
+    let res;
+    try {
+      res = await fetchImpl(url, { redirect: "error", signal: AbortSignal.timeout(timeoutMs) });
+    } catch (e) {
+      const why = e && (e.name === "TimeoutError" || e.name === "AbortError") ? "Zeitlimit (" + timeoutMs / 1000 + " s) überschritten" : String((e && e.message) || e);
+      throw new Error(name + ": Abruf fehlgeschlagen – " + why);
+    }
     if (!res.ok) throw new Error(name + ": HTTP " + res.status);
-    const text = await res.text();
+    const text = (await readLimited(res, MAX_CSV_BYTES, name)).replace(/\r\n/g, "\n");
     parseCsv(text, name);
-    writeFileSync(join(dir, name + ".csv"), text.replace(/\r\n/g, "\n"));
+    csv[name] = text;
     process.stdout.write("geladen: " + name + " (" + text.length + " Zeichen)\n");
   }
+  buildIndex(csv, build); // wirft, wenn eine Tabelle nicht passt – dann wird nichts überschrieben
+  if (write) {
+    mkdirSync(dir, { recursive: true });
+    for (const name of TABLES) writeFileSync(join(dir, name + ".csv"), csv[name]);
+  }
+  return csv;
 }
 
 function argValue(argv, flag) {

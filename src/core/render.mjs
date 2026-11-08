@@ -33,11 +33,12 @@ function append(doc, node, children) {
   }
 }
 
-// text from the file: control characters, bidi overrides/isolates (U+202A-E, U+2066-9), zero-width characters
-// (U+200B-F, U+2060, U+FEFF) and line/paragraph separators (U+2028/9) out, length capped (it still only ever becomes a
-// text node; the stylesheet isolates the bidi direction of file text as well)
+// text from the file: control characters, bidi marks/overrides/isolates (U+061C, U+200E/F, U+202A-E, U+2066-9),
+// zero-width and invisible format characters (U+180E, U+200B-F, U+2060-206F, U+FEFF, tag characters U+E0000-E007F) and
+// line/paragraph separators (U+2028/9) out, length capped (it still only ever becomes a text node; the stylesheet
+// isolates the bidi direction of file text as well)
 // eslint-disable-next-line no-control-regex
-const CLEAN_RE = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u200B-\u200F\u2028-\u202E\u2060-\u2069\uFEFF]/g;
+const CLEAN_RE = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u061C\u180E\u200B-\u200F\u2028-\u202E\u2060-\u206F\uFEFF\u{E0000}-\u{E007F}]/gu;
 
 export function clean(s, max = TEXT_MAX) {
   if (typeof s !== "string") return "";

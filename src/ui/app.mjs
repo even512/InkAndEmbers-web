@@ -8,6 +8,7 @@ import { t } from "./texts.mjs";
 import { safeText } from "./safe-text.mjs";
 import { loadSvFile, errorMessage } from "./load-file.mjs";
 import { pickDroppedFile, hasFiles } from "./drop.mjs";
+import { createJourneyView } from "./journey.mjs";
 
 const LANG_KEY = "iae-lang";
 
@@ -42,6 +43,7 @@ export function startApp(doc, win) {
     busy: false,
   };
   let loadToken = 0;
+  let journey = null; // { guid, db, view } Reise-Ansicht des gewählten Charakters (bleibt über render() erhalten)
 
   const root = doc.getElementById("app");
   const picker = doc.createElement("input");
@@ -244,13 +246,26 @@ export function startApp(doc, win) {
     for (const [id, key] of [["journey", "tabJourney"], ["chronicle", "tabChronicle"]]) {
       bar.appendChild(button("tab-btn" + (state.view === id ? " active" : ""), t(state.lang, key), () => {
         state.view = id;
+        if (journey && id !== "journey") journey.view.pause();
         render();
+        if (journey && id === "journey") journey.view.shown();
       }, (b) => b.setAttribute("aria-pressed", state.view === id ? "true" : "false")));
     }
     return bar;
   }
 
-  // Platzhalter für Reise (W4) und Chronik/Statistik (W5)
+  // Reise-Ansicht (W4): je Charakter einmal aufgebaut, bei jedem render() wieder eingehängt
+  function journeyPanel() {
+    const db = state.file.db;
+    if (!journey || journey.guid !== state.guid || journey.db !== db) {
+      if (journey) journey.view.destroy();
+      journey = { guid: state.guid, db, view: createJourneyView(doc, win, { journal: state.journal, char: db.chars[state.guid], lang: state.lang }) };
+    }
+    journey.view.setLang(state.lang);
+    return journey.view.element;
+  }
+
+  // Platzhalter für Chronik/Statistik (W5)
   function journalShell() {
     const c = currentCharacter();
     const meta = c
@@ -261,11 +276,12 @@ export function startApp(doc, win) {
       meta ? el(doc, "p", "journal-meta", meta) : null,
       c ? el(doc, "p", "journal-meta", t(state.lang, "charSummaryLines", fmtNumber(state.lang, c.lines))) : null,
     );
-    const isJourney = state.view === "journey";
-    const panel = el(doc, "section", "view-panel placeholder",
-      el(doc, "h2", "panel-title", t(state.lang, isJourney ? "journeyTitle" : "chronicleTitle")),
-      el(doc, "p", "panel-soon", t(state.lang, isJourney ? "journeySoon" : "chronicleSoon")),
-    );
+    const panel = state.view === "journey"
+      ? journeyPanel()
+      : el(doc, "section", "view-panel placeholder",
+        el(doc, "h2", "panel-title", t(state.lang, "chronicleTitle")),
+        el(doc, "p", "panel-soon", t(state.lang, "chronicleSoon")),
+      );
     return el(doc, "div", "journal-shell", head, tabs(), panel);
   }
 

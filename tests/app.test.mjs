@@ -9,8 +9,8 @@ const fixture = (n) => readFileSync(fileURLToPath(new URL("./fixtures/" + n, imp
 const SAMPLE = fixture("journal-export-sample.lua");
 const XSS = fixture("xss.lua");
 
-const ALLOWED_TAGS = new Set(["DIV", "SECTION", "HEADER", "FOOTER", "MAIN", "H1", "H2", "P", "SPAN", "BUTTON", "SELECT", "OPTION", "INPUT", "BODY", "HTML"]);
-const ALLOWED_ATTRS = new Set(["lang", "type", "role", "aria-label", "aria-pressed", "aria-hidden", "accept", "tabindex"]);
+const ALLOWED_TAGS = new Set(["DIV", "SECTION", "HEADER", "FOOTER", "MAIN", "H1", "H2", "P", "SPAN", "BUTTON", "SELECT", "OPTION", "INPUT", "BODY", "HTML", "CANVAS"]);
+const ALLOWED_ATTRS = new Set(["lang", "type", "role", "aria-label", "aria-pressed", "aria-hidden", "accept", "tabindex", "aria-valuetext"]);
 
 function boot(opts) {
   const env = fakeEnv(opts);
@@ -32,14 +32,14 @@ describe("Seite", () => {
     expect(byClass(en.appRoot, "site-footer")[0].textContent).toContain("not affiliated with Blizzard Entertainment");
   });
 
-  it("lädt die Datei und zeigt den zuletzt gespielten Charakter mit den Platzhaltern für Reise und Chronik", async () => {
+  it("lädt die Datei und zeigt den zuletzt gespielten Charakter mit Reise-Ansicht und Chronik-Platzhalter", async () => {
     const { app, appRoot, doc } = boot({ language: "de-DE" });
     await app.loadFile(makeFile("InkAndEmbers.lua", SAMPLE));
     expect(app.state.error).toBeNull();
     expect(app.state.guid).toBe(app.state.file.characters[0].guid);
     expect(byClass(appRoot, "journal-name")[0].textContent).toBe("Mirela");
     expect(byClass(appRoot, "dropzone")).toHaveLength(0);
-    expect(byClass(appRoot, "placeholder")[0].textContent).toContain("Die Reise");
+    expect(byClass(appRoot, "journey-panel")[0].textContent).toContain("Die Reise");
     findAll(appRoot, (n) => n.className.split(" ").includes("tab-btn"))[1].click();
     expect(byClass(appRoot, "placeholder")[0].textContent).toContain("Chronik & Statistik");
     expect(doc.title).toContain("Mirela");

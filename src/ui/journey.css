@@ -1,0 +1,133 @@
+/* Reise-Ansicht: Karte so groß wie möglich auf dem Pergament, Kapitel als Zettel, Wiedergabe darunter. */
+
+.journey-panel { padding: 18px 18px 14px; }
+
+.journey-head {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
+  margin: 0 0 10px;
+}
+.journey-title { margin: 0; }
+.journey-empty { text-align: center; margin: 40px auto; }
+
+/* Segment-Schalter (Zone/Kontinent, Tempo) */
+.seg { display: inline-flex; border: 1px solid var(--ochre); border-radius: 7px; overflow: hidden; background: var(--paper-1); }
+.seg-btn {
+  font: inherit; cursor: pointer; border: 0; padding: 5px 12px; background: transparent; color: var(--ink);
+  border-left: 1px solid var(--rule);
+}
+.seg-btn:first-child { border-left: 0; }
+.seg-btn:hover { background: var(--paper-3); }
+.seg-btn.active { background: var(--seal); color: #fff6e6; font-weight: 600; }
+.seg-btn:focus-visible, .chapter-chip:focus-visible, .map-tool:focus-visible, .map-canvas:focus-visible, .scrub:focus-visible, .play-btn:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 2px;
+}
+
+/* Kapitelleiste: Zettel je Zone, waagerecht scrollbar */
+.chapter-bar {
+  display: flex; gap: 8px; overflow-x: auto; padding: 6px 4px 10px; margin: 0 0 8px;
+  scrollbar-width: thin; scroll-snap-type: x proximity;
+}
+.chapter-chip {
+  flex: 0 0 auto; scroll-snap-align: start;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0;
+  max-width: 210px; padding: 5px 12px 6px;
+  font: inherit; text-align: left; cursor: pointer;
+  background: #fbf3df; color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 3px;
+  box-shadow: 0 2px 5px rgba(60, 40, 20, 0.2);
+  transform: rotate(-1deg);
+}
+.chapter-chip:nth-child(2n) { transform: rotate(1.2deg); }
+.chapter-chip:nth-child(3n) { transform: rotate(-1.6deg); }
+.chapter-chip:hover { background: #fff8e8; }
+.chapter-chip.current { border-color: var(--seal); box-shadow: 0 0 0 2px rgba(138, 42, 28, 0.35), 0 2px 5px rgba(60, 40, 20, 0.2); }
+.chapter-chip.active { background: var(--seal); color: #fff6e6; border-color: var(--seal-dark); }
+.chip-num { font-size: 0.78em; letter-spacing: 0.03em; text-transform: uppercase; opacity: 0.85; white-space: nowrap; }
+.chip-name {
+  font-family: var(--hand); font-size: 1.35em; line-height: 1.1; max-width: 186px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; unicode-bidi: isolate;
+}
+
+/* Karte */
+.map-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  max-height: 78vh;
+  min-height: 260px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  box-shadow: inset 0 0 24px rgba(90, 60, 20, 0.25);
+  background: var(--paper-2);
+}
+.map-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.map-canvas:active { cursor: grabbing; }
+.map-tools { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 6px; }
+.map-tool {
+  width: 34px; height: 34px; font: 600 18px/1 var(--serif); cursor: pointer;
+  border-radius: 6px; border: 1px solid var(--ochre); background: rgba(251, 243, 223, 0.94); color: var(--ink);
+  box-shadow: 0 1px 4px rgba(60, 40, 20, 0.3);
+}
+.map-tool:hover { background: #fff8e8; }
+.map-tip {
+  position: absolute; z-index: 3; pointer-events: none;
+  display: flex; flex-direction: column; max-width: 240px;
+  padding: 6px 10px; border-radius: 6px;
+  background: rgba(43, 33, 24, 0.94); color: #f4e8cc;
+  border: 1px solid var(--seal);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  font-size: 0.9em; line-height: 1.35;
+}
+.map-tip[hidden], .map-note[hidden] { display: none; }
+.tip-title { font-weight: 600; color: #ffd98a; unicode-bidi: isolate; overflow-wrap: anywhere; }
+.tip-line { unicode-bidi: isolate; overflow-wrap: anywhere; }
+.map-note {
+  position: absolute; left: 10px; bottom: 10px; margin: 0; max-width: 70%;
+  padding: 4px 10px; border-radius: 5px; font-size: 0.85em;
+  background: rgba(251, 243, 223, 0.94); color: var(--ink-soft); border: 1px solid var(--rule);
+}
+
+/* Wiedergabe */
+.playback {
+  display: grid; grid-template-columns: auto auto 1fr; grid-template-areas: "play speed scrub" "info info info";
+  align-items: center; gap: 8px 14px; margin: 12px 0 4px;
+}
+.play-btn { grid-area: play; min-width: 8.5em; }
+.speed-switch { grid-area: speed; }
+.scrub { grid-area: scrub; width: 100%; accent-color: var(--seal); cursor: pointer; }
+.play-info { grid-area: info; margin: 0; text-align: center; font-family: var(--hand); font-size: 1.55em; color: var(--seal); }
+
+/* Legende */
+.map-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; margin: 4px 0 0; font-size: 0.88em; color: var(--ink-soft); }
+.leg { display: inline-flex; align-items: center; gap: 6px; }
+.leg-route::before, .leg-flight::before { content: ""; display: inline-block; width: 26px; height: 0; }
+.leg-route::before { border-top: 3px solid #9b2c1f; box-shadow: 0 0 5px rgba(224, 162, 74, 0.8); }
+.leg-flight::before { border-top: 2px dashed #2f4e7a; }
+.leg-dot {
+  display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%;
+  font-size: 11px; line-height: 1; border: 1px solid rgba(0, 0, 0, 0.45);
+}
+.leg-level .leg-dot { background: #c9a14a; color: #2b2118; }
+.leg-death .leg-dot { background: #8a2a1c; color: #fff6e6; }
+.leg-boss .leg-dot { background: #5e1a10; color: #f1d48a; }
+.leg-rare .leg-dot { background: #6a3a92; color: #f6ecff; }
+.leg-discovery .leg-dot { background: #2f552c; color: #f1f6e6; }
+
+.journey-notes .notice { margin: 8px 0 0; }
+
+@media (max-width: 640px) {
+  .journey-panel { padding: 12px 8px; }
+  .playback { grid-template-columns: auto 1fr; grid-template-areas: "play speed" "scrub scrub" "info info"; }
+  .map-frame { aspect-ratio: 1 / 1; }
+}
+
+/* Nachtlampe: die Pergamentfläche bleibt hell, nur der Rand wird wärmer und dunkler */
+@media (prefers-color-scheme: dark) {
+  .journey-panel { background: linear-gradient(180deg, #ecdcb6, #e0cb9c); }
+  .map-frame { border-color: rgba(60, 40, 20, 0.6); }
+}
+
+@media print {
+  .playback, .map-tools, .chapter-bar, .mode-switch { display: none !important; }
+}

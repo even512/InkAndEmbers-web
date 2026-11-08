@@ -9,6 +9,7 @@ import { safeText } from "./safe-text.mjs";
 import { loadSvFile, errorMessage } from "./load-file.mjs";
 import { pickDroppedFile, hasFiles } from "./drop.mjs";
 import { createJourneyView } from "./journey.mjs";
+import { renderChroniclePanel } from "../chronik/index.mjs";
 
 const LANG_KEY = "iae-lang";
 
@@ -278,10 +279,7 @@ export function startApp(doc, win) {
     );
     const panel = state.view === "journey"
       ? journeyPanel()
-      : el(doc, "section", "view-panel placeholder",
-        el(doc, "h2", "panel-title", t(state.lang, "chronicleTitle")),
-        el(doc, "p", "panel-soon", t(state.lang, "chronicleSoon")),
-      );
+      : renderChroniclePanel(doc, { db: state.file.db, guid: state.guid, journal: state.journal, lang: state.lang });
     return el(doc, "div", "journal-shell", head, tabs(), panel);
   }
 

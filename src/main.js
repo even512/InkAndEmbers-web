@@ -3,6 +3,7 @@ import "./ui/fonts.css";
 import "./core/style.css";
 import "./ui/app.css";
 import "./ui/journey.css";
+import "./chronik/chronik.css";
 import { startApp } from "./ui/app.mjs";
 
 startApp(document, window);

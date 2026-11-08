@@ -27,9 +27,9 @@ SOFTWARE.
 
 Ausnahmen (nicht unter der MIT-Lizenz):
 
-- Schriften unter public/fonts/ (Spectral, Caveat): SIL Open Font License 1.1, Lizenztexte liegen daneben.
-- Grafiken unter public/img/ (falls vorhanden): Eigene Grafiken des Autors für Ink & Embers; Nutzung mit dem Projekt,
-  keine Lizenz für andere Zwecke.
+- Schrift unter public/fonts/ (Spectral): SIL Open Font License 1.1, Lizenztext liegt daneben.
+- Grafiken unter public/img/: Grafiken des Addons Ink & Embers (Autor EveN), alle Rechte vorbehalten, soweit ein Schutz
+  besteht; keine Lizenz für andere Zwecke. Siehe public/img/LICENSE-NOTE.md.
 - Kartenbilder unter public/maps/ (ab Etappe W3): Kartenkunst © Blizzard Entertainment, aus dem Spielclient entnommen,
   nicht-kommerzielle Fan-Nutzung, keine Lizenz an Dritte. Siehe public/maps/LICENSE-NOTE.md.
 - World of Warcraft und alle zugehörigen Namen und Kunstwerke sind Eigentum von Blizzard Entertainment. Dieses Projekt ist

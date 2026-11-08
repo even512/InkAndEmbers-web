@@ -1,59 +1,96 @@
-/* Ergänzungen der Webseite zum Buch-Stil aus core/style.css (Pergament, Tinte, Siegelrot). */
+/* Seitenrahmen: Kopfleiste, Einstieg (Ablegen), Charakterwahl, Steckkopf mit Porträt, Reiter mit Bronze-Lesezeichen, Fußzeile. */
 
-.noscript { padding: 2em; font-family: Georgia, serif; }
+/* ---- Kopfleiste ----------------------------------------------------------------------------------------- */
+.topbar { border-bottom: var(--border) solid var(--c-rule); }
+.topbar-inner {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-4);
+  min-height: 64px; padding-top: var(--s-2); padding-bottom: var(--s-2);
+}
+.brand { display: flex; align-items: center; gap: var(--s-3); margin-right: auto; min-height: var(--touch); min-width: 0; }
+.brand-icon { width: 32px; height: 32px; flex: none; }
+.brand-name { font-size: var(--fs-md); font-weight: var(--fw-strong); white-space: nowrap; }
+.brand-sub { font-size: var(--fs-sm); color: var(--c-ink-muted); }
+.file-name { font-size: var(--fs-sm); color: var(--c-ink-muted); overflow-wrap: anywhere; min-width: 0; max-width: 40ch; }
 
-.journal-shell { max-width: 1100px; margin: 0 auto; padding: 22px 18px 40px; }
+.messages { padding-top: var(--s-5); }
+.messages > :last-child { margin-bottom: 0; }
 
-.journal-head { text-align: center; margin: 8px 0 18px; }
-.journal-name { font-weight: 600; color: var(--head); margin: 0; font-size: 2.2em; overflow-wrap: anywhere; }
-.journal-meta { font-family: var(--hand); font-size: 1.5em; color: var(--seal); margin: 2px 0 0; overflow-wrap: anywhere; }
+/* ---- Einstieg ------------------------------------------------------------------------------------------- */
+.intro { padding-top: var(--s-7); padding-bottom: var(--s-7); max-width: 760px; margin: 0 auto; }
+.intro-title { font-size: var(--fs-xl); }
+.intro-lead { margin-top: var(--s-2); color: var(--c-ink-muted); font-size: var(--fs-md); max-width: 60ch; }
+.dropzone {
+  display: grid; justify-items: center; gap: var(--s-2); text-align: center;
+  margin-top: var(--s-6); padding: var(--s-6) var(--s-5);
+  border: 2px dashed var(--c-line); border-radius: var(--radius-1);
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.drop-icon { width: 48px; height: 48px; }
+.drop-title { font-size: var(--fs-md); font-weight: var(--fw-strong); }
+.drop-or { color: var(--c-ink-muted); }
+body.dragging .dropzone { border-color: var(--c-accent); background: var(--c-hover); }
+body.dragging::after { content: ""; position: fixed; inset: 0; pointer-events: none; border: 4px solid var(--c-accent); }
+.drop-hint { margin-top: var(--s-5); color: var(--c-ink-muted); overflow-wrap: anywhere; }
+.privacy { margin-top: var(--s-3); padding-left: var(--s-3); border-left: 2px solid var(--c-bronze); }
 
-.view-tabs { display: flex; justify-content: center; gap: 8px; margin: 0 0 16px; flex-wrap: wrap; }
+/* ---- Charakterwahl (Datei mit mehreren Charakteren, keiner gewählt) ---------------------------------------- */
+.chooser { padding-top: var(--s-6); padding-bottom: var(--s-7); }
+.chooser-title { font-size: var(--fs-lg); margin-bottom: var(--s-4); }
+.char-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 0 var(--s-6); }
+.char-card {
+  display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: var(--s-3); align-items: center;
+  min-height: var(--touch); padding: var(--s-3) 0; text-align: left;
+  font: inherit; color: var(--c-ink); background: none; cursor: pointer;
+  border: 0; border-bottom: var(--border) solid var(--c-rule);
+}
+.char-card:hover { background: var(--c-hover); }
+.char-portrait { width: 56px; height: 56px; border-radius: var(--radius-round); border: 2px solid var(--c-bronze); }
+.char-text { display: grid; min-width: 0; }
+.char-name { font-size: var(--fs-md); font-weight: var(--fw-strong); overflow-wrap: anywhere; }
+.char-meta { overflow-wrap: anywhere; }
+.char-realm { font-size: var(--fs-sm); color: var(--c-ink-muted); }
+
+/* ---- Charakter-Kopf -------------------------------------------------------------------------------------- */
+.hero {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, auto); gap: var(--s-4) var(--s-5); align-items: center;
+  padding: var(--s-6) 0 var(--s-5);
+}
+.portrait { width: 80px; height: 80px; border-radius: var(--radius-round); border: 2px solid var(--c-bronze); }
+.hero-who { min-width: 0; }
+.journal-name { font-size: var(--fs-xl); overflow-wrap: anywhere; }
+.hero-meta { margin-top: var(--s-1); color: var(--c-ink-muted); overflow-wrap: anywhere; font-variant-numeric: tabular-nums lining-nums; }
+.hero-field { justify-self: end; min-width: min(100%, 260px); }
+.hero-field select { width: 100%; }
+
+/* ---- Reiter: Bronzekappe + Wort, aktiv = Tinte + 3 px Bronze-Unterkante -------------------------------------- */
+.tabs { display: flex; flex-wrap: wrap; gap: 0 var(--s-5); border-bottom: var(--border) solid var(--c-rule); }
 .tab-btn {
-  font: inherit;
-  cursor: pointer;
-  padding: 7px 16px;
-  border-radius: 6px;
-  border: 1px solid var(--ochre);
-  background: var(--paper-2);
-  color: var(--ink);
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  min-height: 56px; padding: 0 var(--s-1); margin-bottom: -1px;
+  font: inherit; font-size: var(--fs-md); color: var(--c-ink-muted); background: none; cursor: pointer;
+  border: 0; border-bottom: var(--border-strong) solid transparent;
+  transition: color var(--dur-fast) var(--ease);
 }
-.tab-btn:hover { background: var(--paper-1); }
-.tab-btn.active { background: var(--seal); border-color: var(--seal-dark); color: #fff6e6; font-weight: 600; }
-.tab-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.tab-btn:hover { color: var(--c-ink); }
+.tab-cap { width: 37px; height: 34px; flex: none; }
+.tab-btn[aria-selected="true"] { color: var(--c-ink); font-weight: var(--fw-strong); border-bottom-color: var(--c-bronze); }
+.tab-btn[aria-selected="false"] .tab-cap { filter: grayscale(.6); opacity: .8; }
+.view-panel { padding: var(--s-6) 0 var(--s-7); }
 
-.view-panel {
-  background: linear-gradient(180deg, var(--paper-1), var(--paper-2));
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  box-shadow: 0 6px 22px rgba(60, 40, 20, 0.22);
-  padding: 28px 24px;
-  min-height: 320px;
-}
-.placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.panel-title { font-weight: 600; color: var(--head); margin: 0 0 8px; }
-.panel-soon { font-family: var(--hand); font-size: 1.5em; color: var(--ink-soft); margin: 0; max-width: 36em; }
+/* ---- Fußzeile -------------------------------------------------------------------------------------------- */
+.site-footer { border-top: var(--border) solid var(--c-rule); padding: var(--s-5) 0 var(--s-7); font-size: var(--fs-sm); color: var(--c-ink-muted); }
+.site-footer p + p { margin-top: var(--s-1); }
 
-.site-footer {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 18px;
-  text-align: center;
-  font-size: 0.85em;
-  color: var(--ink-soft);
-}
-.site-footer p { margin: 2px 0; }
-@media (prefers-color-scheme: dark) {
-  .site-footer { color: var(--chrome-muted); }
-}
-
-@media print {
-  .site-footer { display: none !important; }
-}
-
-/* Kopf direkt auf dem Schreibtisch: im dunklen Thema helle Schrift (Pergament-Fläche darunter bleibt hell) */
-@media (prefers-color-scheme: dark) {
-  .journal-name { color: var(--chrome-fg); }
-  .journal-meta { color: var(--accent); }
-  .tab-btn { border-color: var(--chrome-muted); }
+/* ---- schmal ---------------------------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .brand-sub { display: none; }
+  .file-name { order: 5; flex-basis: 100%; max-width: none; }
+  .hero { grid-template-columns: 64px minmax(0, 1fr); padding-top: var(--s-5); }
+  .hero-field { grid-column: 1 / -1; justify-self: stretch; }
+  .portrait { width: 64px; height: 64px; }
+  .journal-name { font-size: var(--fs-lg); }
+  .tabs { gap: 0 var(--s-3); }
+  .tab-btn { font-size: var(--fs-base); }
+  .tab-cap { width: 30px; height: 28px; }
+  .intro { padding-top: var(--s-6); }
 }

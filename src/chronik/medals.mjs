@@ -55,7 +55,7 @@ export const SEALS = [
   { id: "hunter", family: "combat", steps: MEDAL_STEPS.hunter },
   { id: "elite_hunter", family: "combat", steps: MEDAL_STEPS.elite_hunter },
   { id: "rare_hunter", family: "combat", steps: MEDAL_STEPS.rare_hunter },
-  { id: "close_win", family: "combat", steps: MEDAL_STEPS.close_win, retailHidden: true },
+  { id: "close_win", family: "combat", steps: MEDAL_STEPS.close_win, retailHidden: true, needsHealth: true },
   { id: "duel", family: "combat", steps: MEDAL_STEPS.duel },
   { id: "quests", family: "lore", steps: MEDAL_STEPS.quests },
   { id: "reputation", family: "lore", steps: MEDAL_STEPS.reputation, unit: "standing" },
@@ -508,6 +508,18 @@ function entryOf(seal, C, value, earned, saved) {
   return e;
 }
 
+// Kann der Client das Leben am Kampfende lesen? Wie ns.closeWinReadable im Addon aus db.diag (hpEnd "secret"/"ok",
+// state.healthSecret). Ohne Angabe: in Forever nein (dort sind die Werte geheim, das Addon blendet „Um Haaresbreite“ aus).
+export function healthReadable(db, flavor) {
+  const diag = db && isTable(db.diag) ? db.diag : null;
+  if (diag) {
+    if (diag.hpEnd === "secret") return false;
+    if (diag.hpEnd === "ok") return true;
+    if (isTable(diag.state) && diag.state.healthSecret === true) return false;
+  }
+  return flavor !== "forever";
+}
+
 // Alle Medaillen: { list, families, earned (Medaillen mit mindestens einer Stufe), total, steps, stepsTotal }
 export function buildMedals(ctx, { flavor = null, maxLevel = 60, level = null } = {}) {
   const C = medalCtx(ctx);
@@ -533,8 +545,9 @@ export function buildMedals(ctx, { flavor = null, maxLevel = 60, level = null } 
     if (seal.id === "level60" && !e.earned && isFiniteNum(level)) e.level = Math.min(Math.floor(level), maxLevel);
     if (seal.id === "level60") e.top = maxLevel;
     const f = fam.get(seal.family);
-    // auf dem Client nicht erreichbare Medaillen bleiben verborgen, solange nichts davon verdient ist (Retail)
-    if (e.count === 0 && seal.retailHidden && flavor === "retail") {
+    // auf dem Client nicht erreichbare Medaillen bleiben verborgen, solange nichts davon verdient ist (Retail; „Um Haaresbreite“
+    // auch, wenn das Leben am Kampfende nicht lesbar ist, wie in Forever)
+    if (e.count === 0 && ((seal.retailHidden && flavor === "retail") || (seal.needsHealth && !healthReadable(ctx.db, flavor)))) {
       e.hidden = true;
       hiddenN++;
     } else {

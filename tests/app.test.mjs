@@ -9,8 +9,10 @@ const fixture = (n) => readFileSync(fileURLToPath(new URL("./fixtures/" + n, imp
 const SAMPLE = fixture("journal-export-sample.lua");
 const XSS = fixture("xss.lua");
 
-const ALLOWED_TAGS = new Set(["DIV", "SECTION", "HEADER", "FOOTER", "MAIN", "H1", "H2", "P", "SPAN", "BUTTON", "SELECT", "OPTION", "INPUT", "BODY", "HTML", "CANVAS"]);
-const ALLOWED_ATTRS = new Set(["lang", "type", "role", "aria-label", "aria-pressed", "aria-hidden", "accept", "tabindex", "aria-valuetext"]);
+const ALLOWED_TAGS = new Set(["DIV", "SECTION", "HEADER", "FOOTER", "MAIN", "H1", "H2", "H3", "P", "SPAN", "STRONG", "BUTTON", "SELECT", "OPTION", "INPUT", "LABEL", "BODY", "HTML", "CANVAS", "IMG", "UL", "LI", "DL", "DT", "DD", "SMALL"]);
+const ALLOWED_ATTRS = new Set(["lang", "type", "role", "aria-label", "aria-pressed", "aria-hidden", "accept", "tabindex", "aria-valuetext", "src", "alt", "width", "height", "decoding", "id", "for", "aria-selected", "aria-controls", "aria-labelledby", "aria-live", "aria-describedby"]);
+// Bilder nur aus public/img/ mit festem Namen (Addon-Kunst), nie aus Dateidaten
+const IMG_SRC = /^img\/(book-icon|tab-reise|tab-chronik|portrait-(human|dwarf|nightelf|gnome|orc|undead|tauren|troll|skyborne)|map-(level|milestone|death|boss|rare|photo|current|hearth))\.webp$/;
 
 function boot(opts) {
   const env = fakeEnv(opts);
@@ -129,7 +131,11 @@ describe("Sicherheit der Anzeige (XSS-Fixture)", () => {
     expect(app.state.error).toBeNull();
     for (const n of doc.created) expect(ALLOWED_TAGS.has(n.tagName), n.tagName).toBe(true);
     for (const n of doc.created) for (const k of Object.keys(n.attributes)) expect(ALLOWED_ATTRS.has(k), k).toBe(true);
-    expect(findAll(appRoot, (n) => ["SCRIPT", "IMG", "IFRAME", "A"].includes(n.tagName))).toHaveLength(0);
+    expect(findAll(appRoot, (n) => ["SCRIPT", "IFRAME", "A"].includes(n.tagName))).toHaveLength(0);
+    for (const n of findAll(appRoot, (x) => x.tagName === "IMG")) {
+      expect(n.attributes.src).toMatch(IMG_SRC);
+      expect(n.attributes.alt).toBe("");
+    }
     // der Text ist da, aber als Text (Zeichen erhalten), Bidi-/Zero-Width-Zeichen sind entfernt
     const name = byClass(appRoot, "journal-name")[0].textContent;
     expect(name).toContain("<script>alert(1)</script>");

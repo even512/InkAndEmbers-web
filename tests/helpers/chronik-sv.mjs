@@ -31,7 +31,7 @@ export const L = (dt, code, ...fields) => [dt, code, ...fields].join("~");
 export const block = (start, lines) => "#~" + start + "~1\n" + lines.join("\n");
 
 // Datenbank für einen Charakter. opts: blocks (Textblöcke) oder lines (Zeilen für einen Block ab T0), info, snapshots, counters,
-// npcs, quests, sessions, interface
+// npcs, quests, sessions, interface, diag (Diagnose-Tabelle der Datei, z. B. { hpEnd: "ok" })
 export function makeDb(opts = {}) {
   const blocks = opts.blocks || [block(opts.start ?? T0, opts.lines || [])];
   const char = {
@@ -45,7 +45,9 @@ export function makeDb(opts = {}) {
   if (opts.quests) char.quests = opts.quests;
   const meta = { tzOffset: 3600 };
   if (opts.sessions) meta.sessions = opts.sessions.map((s) => ({ guid: GUID, ...s }));
-  const text = luaText("EveNChronicleDB", { locale: "deDE", schema: 1, meta, chars: { [GUID]: char } });
+  const root = { locale: "deDE", schema: 1, meta, chars: { [GUID]: char } };
+  if (opts.diag) root.diag = opts.diag;
+  const text = luaText("EveNChronicleDB", root);
   const { db } = readSavedVariables(text);
   return db;
 }

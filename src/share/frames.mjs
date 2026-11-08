@@ -5,6 +5,7 @@
 import { fmtDate } from "../core/i18n.mjs";
 import { fromAxis, positionAt } from "../trail/parse-trail.mjs";
 import { mapInfo } from "../geo/map-geo.mjs";
+import { zoneName } from "../geo/zone-names.mjs";
 import { buildLabels, prepareMapScene, chooseMap, levelAt } from "../map/scene.mjs";
 import { drawFrame, fitView, DEFAULT_ASPECT } from "../map/renderer.mjs";
 import { safeText } from "../ui/safe-text.mjs";
@@ -97,9 +98,11 @@ export function sceneCache(data, anon = null) {
   };
 }
 
-// Kartenname: aus der Datei (data.names, ggf. gesäubert), sonst Index, sonst #ID
-export function mapTitle(data, mapID) {
+// Kartenname: in der Sprache lang aus der Addon-Tabelle (zone-names), sonst aus der Datei (data.names, gesäubert), sonst Index, sonst #ID
+export function mapTitle(data, mapID, lang = null) {
   if (!mapID) return "";
+  const z = lang ? zoneName(mapID, lang === "en" ? "en" : "de") : null;
+  if (z) return z;
   const n = data.names.get(mapID);
   if (n) return safeText(n, 60);
   const info = mapInfo(mapID);
@@ -113,7 +116,8 @@ export function mapTitle(data, mapID) {
 //   images    Map(mapID -> Bild oder null)
 //   plan      planTimeline(...)
 //   info      { charName, lang }
-export function createFrameJob({ data, scope, range, images, plan, info, anon = null, baseMapID = null }) {
+//   icons     Map(Markerart -> Bild) mit den Addon-Symbolen (optional; ohne: Kreise mit Zeichen)
+export function createFrameJob({ data, scope, range, images, plan, info, anon = null, baseMapID = null, icons = null }) {
   const tl = data.trail.timeline;
   const pick = mapChooser(data, scope, { baseMapID });
   const scenes = sceneCache(data, anon);
@@ -139,10 +143,10 @@ export function createFrameJob({ data, scope, range, images, plan, info, anon = 
       mapID,
       state: {
         width: LOGICAL, height: LOGICAL, scene: scenes(mapID), image: img, aspect, view: viewFor(mapID, aspect),
-        title: "", theme: "light", timeline: tl, highlight: null, // Kartenname steht in der Einblendung
+        title: "", theme: "light", timeline: tl, highlight: null, icons, // Kartenname steht in der Einblendung
       },
       overlay: {
-        title: scope === "trip" ? st(lang, "shJourney") : mapTitle(data, mapID),
+        title: scope === "trip" ? st(lang, "shJourney") : mapTitle(data, mapID, lang),
         line: [charName, level !== null ? st(lang, "shLevel", level) : null, fmtDate(lang, epoch)].filter(Boolean).join(" · "),
         watermark: st(lang, "shWatermark"),
       },
@@ -160,7 +164,6 @@ export function createFrameJob({ data, scope, range, images, plan, info, anon = 
 }
 
 const SERIF = '"Spectral", "Iowan Old Style", "Palatino Linotype", Georgia, serif';
-const HAND = '"Caveat", "Segoe Print", "Bradley Hand", cursive';
 
 // Text kürzen, bis er in maxW passt
 function fit(ctx, text, maxW) {
@@ -185,7 +188,7 @@ export function drawOverlay(ctx, overlay, size) {
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "#2b2118";
-  ctx.font = "700 36px " + HAND;
+  ctx.font = "600 32px " + SERIF;
   ctx.fillText(fit(ctx, safeText(overlay.title || "", 60), W - 40), 20, 42);
   ctx.fillStyle = "#5a4632";
   ctx.font = "18px " + SERIF;
@@ -193,7 +196,7 @@ export function drawOverlay(ctx, overlay, size) {
   // Wasserzeichen
   ctx.globalAlpha = 0.62;
   ctx.textAlign = "right";
-  ctx.font = "italic 600 17px " + SERIF;
+  ctx.font = "600 17px " + SERIF;
   const wm = safeText(overlay.watermark || "", 30);
   const tw = ctx.measureText(wm).width;
   ctx.fillStyle = "rgba(255, 246, 230, 0.75)";

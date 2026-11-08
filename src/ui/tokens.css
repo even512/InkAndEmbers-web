@@ -1,0 +1,139 @@
+/* Design-Tokens „Nah am Addon, entschlackt“ (Entwurf inkandembers-web-design/tokens.css, von Tim freigegeben).
+   Ein flacher Papierton je Schema, keine Verläufe, eine Schattenstufe. Hell = Pergament des Addons, dunkel = dunkles Leder/Bronze.
+   Kontraste (WCAG 2.2) stehen in design.md; die Klassenfarben unten sind gegen beide Papiertöne auf mindestens 4.5:1 geprüft. */
+
+:root {
+  color-scheme: light dark;
+
+  --c-paper: #F4EBD6;
+  --c-ink: #2B2118;
+  --c-ink-muted: #6B5034;
+  --c-accent: #9B2C1F;
+  --c-on-accent: #F4EBD6;
+  --c-bronze: #7A5320;
+  --c-line: #8C6A42;
+  --c-rule: #CDB586;
+  --c-sel-bg: #2B2118;
+  --c-sel-fg: #F4EBD6;
+  --c-flight: #2F4E7A;
+  --c-flight-ui: #2F4E7A;     /* Flug in der Legende (auf Papier) */
+  --c-focus: #2F4E7A;
+  --c-hover: rgb(43 33 24 / 0.07);
+  --c-ok: #2F552C;            /* Häkchen „besiegt/erledigt“, 7.6:1 */
+  --c-q2: #2F6B2C;            /* Gegenstandsqualität ungewöhnlich/selten/episch/legendär, je >= 4.5:1 */
+  --c-q3: #24538F;
+  --c-q4: #6A3A92;
+  --c-q5: #8E4815;
+  --c-metal-bronze: #8A4F1D;
+  --c-metal-silver: #566170;
+  --c-metal-gold: #7A5710;
+  --c-metal-legendary: #8E4815;
+
+  /* WoW-Klassenfarben, auf hellem Papier abgedunkelt (je >= 4.6:1 auf #F4EBD6) */
+  --cls-WARRIOR: #7F6346;
+  --cls-PALADIN: #955571;
+  --cls-HUNTER: #5A703C;
+  --cls-ROGUE: #706B2E;
+  --cls-PRIEST: #696969;
+  --cls-SHAMAN: #0067CB;
+  --cls-MAGE: #247186;
+  --cls-WARLOCK: #6162AB;
+  --cls-DRUID: #A65106;
+  --cls-DEATHKNIGHT: #C41E3A;
+  --cls-MONK: #007847;
+  --cls-DEMONHUNTER: #A330C9;
+  --cls-EVOKER: #287464;
+
+  --font: "Spectral", Georgia, "Times New Roman", serif;
+  --fw-regular: 400;
+  --fw-strong: 600;
+  --fs-sm: 0.875rem;
+  --fs-base: 1rem;
+  --fs-md: 1.125rem;
+  --fs-lg: 1.5rem;
+  --fs-xl: 2rem;
+  --lh-tight: 1.2;
+  --lh-text: 1.5;
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+
+  --radius-1: 2px;
+  --radius-round: 50%;
+  --border: 1px;
+  --border-strong: 3px;
+  --shadow-1: 0 1px 2px rgb(31 21 14 / 0.25);
+
+  --touch: 44px;
+  --focus-ring: 2px solid var(--c-focus);
+  --focus-offset: 2px;
+  --content-max: 1120px;
+  --aside-w: 296px;
+  --gutter: var(--s-5);
+
+  --dur-fast: 120ms;
+  --ease: cubic-bezier(.2, 0, 0, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-paper: #1F150E;
+    --c-ink: #EFE3CB;
+    --c-ink-muted: #C2AA86;
+    --c-accent: #E08A5C;
+    --c-on-accent: #1F150E;
+    --c-bronze: #C9A14A;
+    --c-line: #8A6B47;
+    --c-rule: #4A3624;
+    --c-sel-bg: #EFE3CB;
+    --c-sel-fg: #1F150E;
+    --c-flight-ui: #9DBCEB;
+    --c-focus: #9DBCEB;
+    --c-hover: rgb(239 227 203 / 0.08);
+    --c-ok: #9FCB8F;
+    --c-q2: #7FCF6E;
+    --c-q3: #8DB8F0;
+    --c-q4: #C79BEA;
+    --c-q5: #F0A060;
+    --c-metal-bronze: #E0A06A;
+    --c-metal-silver: #C3CBD6;
+    --c-metal-gold: #E6C25A;
+    --c-metal-legendary: #F0A060;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.5);
+
+    /* Klassenfarben auf dunklem Leder (je >= 4.6:1 auf #1F150E): Originale, nur Schamane, Todesritter, Dämonenjäger aufgehellt */
+    --cls-WARRIOR: #C69B6D;
+    --cls-PALADIN: #F48CBA;
+    --cls-HUNTER: #AAD372;
+    --cls-ROGUE: #FFF468;
+    --cls-PRIEST: #FFFFFF;
+    --cls-SHAMAN: #2183E1;
+    --cls-MAGE: #3FC7EB;
+    --cls-WARLOCK: #8788EE;
+    --cls-DRUID: #FF7C0A;
+    --cls-DEATHKNIGHT: #D3596D;
+    --cls-MONK: #00FF98;
+    --cls-DEMONHUNTER: #B65BD4;
+    --cls-EVOKER: #33937F;
+  }
+}
+
+@media (max-width: 640px) {
+  :root { --gutter: var(--s-4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

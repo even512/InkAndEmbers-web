@@ -4,15 +4,17 @@
 import { el, clean, renderJournal, highlightLine } from "../core/render.mjs";
 import { fmtNumber, fmtDuration } from "../core/i18n.mjs";
 import { ct, ctn, hasCt, difficultyName, standingName } from "./texts.mjs";
-import { TIER_ORDER, TOUGH_DEATHS, MEDAL_STEPS } from "./medals.mjs";
+import { TIER_ORDER, TOUGH_DEATHS, MEDAL_STEPS, SEALS } from "./medals.mjs";
+import { icon, portraitImg, classColorClass } from "../ui/identity.mjs";
 import { XP_SOURCES } from "./stats.mjs";
 import { dungeonDetail, dungeonGroup } from "./dungeons.mjs";
 
 export const PAGE_STEP = 12; // so viele Läufe/Tode kommen je Klick auf "Mehr anzeigen" dazu
 const FLOW_DOTS_MAX = 8;
 
-const FAMILY_GLYPH = { travel: "➶", combat: "⚔", lore: "✎", treasure: "◆", fellows: "❖", rest: "☾", survival: "♥", instance: "♛", moments: "✦" };
-const SEAL_GLYPH = { level60: "★", mount: "♞", epic: "◈", raid: "♜", guild: "⚑", continent: "⛵" };
+// Medaillenbild = Motiv (Addon Media/Seals.tga, Zelle = Platz im Katalog, public/img/seal-<n>.webp) + Metallring der Stufe
+const SEAL_INDEX = new Map(SEALS.map((s, i) => [s.id, i + 1]));
+const RINGS = new Set(["bronze", "silver", "gold", "legendary"]);
 const QUALITY_CLASS = { 2: "chron-q2", 3: "chron-q3", 4: "chron-q4", 5: "chron-q5" };
 
 // ---- kleine Helfer ---------------------------------------------------------------------------------------------------
@@ -62,9 +64,14 @@ function page(doc, key, cls, title, lead, ...children) {
   return s;
 }
 
-// Liste mit "Mehr anzeigen": zeigt step Einträge, jeder Klick hängt die nächsten an
+// Leerer Zustand: Addon-Symbol und ein Satz, was hier künftig steht
+function emptyState(doc, art, text) {
+  return el(doc, "div", "empty chron-empty", icon(doc, art, "empty-icon", [48, 48]), el(doc, "p", "empty-text", text));
+}
+
+// Liste mit "Mehr anzeigen": zeigt step Einträge, jeder Klick hängt die nächsten an (tag: Elementname oder fertiger Knoten)
 function pagedList(doc, lang, tag, cls, items, render, step = PAGE_STEP) {
-  const list = el(doc, tag, cls);
+  const list = typeof tag === "string" ? el(doc, tag, cls) : tag;
   const wrap = el(doc, "div", "chron-paged", list);
   let shown = 0;
   let btn = null;
@@ -91,8 +98,9 @@ function pagedList(doc, lang, tag, cls, items, render, step = PAGE_STEP) {
 function profilePage(doc, lang, m) {
   const p = m.profile;
   const name = clean(p.name, 40) || "?";
-  const initial = (name.match(/\p{L}/u) || ["?"])[0].toUpperCase();
-  const who = [p.race ? clean(p.race, 40) : null, p.cls ? clean(p.cls, 40) : null].filter(Boolean).join(" · ");
+  const clsName = p.cls ? clean(p.cls, 40) : null;
+  const clsTag = clsName ? el(doc, "span", classColorClass(p.classFile) || "cls", clsName) : null;
+  const who = [p.race ? clean(p.race, 40) : null, clsTag].filter(Boolean).flatMap((x, i) => (i ? [" · ", x] : [x]));
   const facts = el(doc, "dl", "prof-facts");
   const row = (label, value) => {
     if (value === null || value === undefined || value === "") return;
@@ -100,7 +108,7 @@ function profilePage(doc, lang, m) {
     facts.appendChild(el(doc, "dd", null, value));
   };
   row(ct(lang, "pfRace"), p.race ? clean(p.race, 40) : null);
-  row(ct(lang, "pfClass"), p.cls ? clean(p.cls, 40) : null);
+  row(ct(lang, "pfClass"), clsName ? el(doc, "span", classColorClass(p.classFile) || "cls", clsName) : null);
   row(ct(lang, "pfFaction"), p.faction ? clean(p.faction, 40) : null);
   row(ct(lang, "pfLevel"), String(p.level));
   row(ct(lang, "pfRealm"), p.realm ? clean(p.realm, 40) : null);
@@ -111,10 +119,11 @@ function profilePage(doc, lang, m) {
   row(ct(lang, "pfEntries"), fmtNumber(lang, p.entries));
   row(ct(lang, "pfAfk"), p.afk ? ct(lang, "pfAfkValue", fmtDuration(lang, p.afk.seconds), fmtNumber(lang, p.afk.phases)) : null);
   const md = m.medals;
-  return page(doc, "profile", "prof-page", ct(lang, "profTitle"), ct(lang, "profLead"),
+  const info = m.ctx && m.ctx.info ? m.ctx.info : {};
+  return page(doc, "profile", "prof-page", ct(lang, "profTitle"), null,
     el(doc, "div", "prof-head",
-      el(doc, "div", "seal prof-seal", el(doc, "span", "seal-letter", initial)),
-      el(doc, "div", "prof-who", el(doc, "h3", "prof-name", name), who ? el(doc, "p", "prof-race", who) : null,
+      portraitImg(doc, { raceFile: typeof info.raceFile === "string" ? info.raceFile : null, race: p.race, faction: typeof info.faction === "string" ? info.faction : null }, "prof-portrait", 96),
+      el(doc, "div", "prof-who", el(doc, "h3", "prof-name", name), who.length ? el(doc, "p", "prof-race", who) : null,
         el(doc, "p", "prof-seals", ct(lang, "sealsLine", md.earned, md.total, md.steps, md.stepsTotal))),
     ),
     facts,
@@ -184,12 +193,24 @@ function progressText(lang, m, maxLevel) {
   return ct(lang, "medNotEarned");
 }
 
+// Anteil bis zur nächsten Stufe (0..1) oder null, wenn kein Balken passt
+function progressShare(m) {
+  if (!m.stepped || !m.need || m.id === "tough") return null;
+  const v = Number(m.value), n = Number(m.need.value);
+  return Number.isFinite(v) && Number.isFinite(n) && n > 0 ? Math.max(0, Math.min(1, v / n)) : null;
+}
+
+function medalSeal(doc, m) {
+  const tier = m.earned && RINGS.has(m.tier) ? m.tier : "bronze"; // noch nicht verdient: Ring der ersten Stufe, entsättigt
+  const n = SEAL_INDEX.get(m.id) || 1;
+  return el(doc, "span", "medal-seal", icon(doc, "seal-" + n, "medal-motif", [64, 64]), icon(doc, "ring-" + tier, "medal-ring", [64, 64]));
+}
+
 function medalCard(doc, lang, m, maxLevel) {
   const tier = m.tier || "bronze";
   const need = m.id === "level60" ? ct(lang, "need_level60", m.top || maxLevel) : ct(lang, "need_" + m.id);
-  const glyph = SEAL_GLYPH[m.id] || FAMILY_GLYPH[m.family] || "✦";
   const li = el(doc, "li", "medal-card " + (m.earned ? "earned tier-" + tier : "locked"));
-  li.appendChild(el(doc, "span", "medal-disc", el(doc, "span", "medal-glyph", glyph)));
+  li.appendChild(medalSeal(doc, m));
   const body = el(doc, "div", "medal-body");
   body.appendChild(el(doc, "h4", "medal-title", ct(lang, "title_" + m.id)));
   let tierLine;
@@ -204,7 +225,6 @@ function medalCard(doc, lang, m, maxLevel) {
       const threshold = unitSteps(m)[k];
       steps.appendChild(
         el(doc, "li", "medal-step tier-text-" + tn + (s ? " done" : ""),
-          el(doc, "span", "step-mark", s ? "✓" : "○"),
           el(doc, "span", "step-text", ct(lang, "tierName_" + tn) + " · " + unitText(lang, m.id, m.unit, threshold, k)),
           s ? el(doc, "span", "step-proof", evidenceText(lang, s)) : null,
         ),
@@ -215,6 +235,12 @@ function medalCard(doc, lang, m, maxLevel) {
     body.appendChild(el(doc, "p", "medal-proof", evidenceText(lang, m.steps[0])));
   }
   const prog = progressText(lang, m, maxLevel);
+  const share = progressShare(m);
+  if (share !== null) {
+    const fill = el(doc, "span", "medal-bar-fill");
+    setWidth(fill, share * 100);
+    body.appendChild(el(doc, "span", "medal-bar", fill));
+  }
   if (prog) body.appendChild(el(doc, "p", "medal-progress", prog));
   li.appendChild(body);
   return li;
@@ -231,7 +257,7 @@ function medalsPage(doc, lang, m) {
     if (!cards.length) continue;
     kids.push(
       el(doc, "div", "medal-family",
-        el(doc, "h3", "medal-family-title", el(doc, "span", "family-glyph", FAMILY_GLYPH[f.id]), ct(lang, "fam_" + f.id),
+        el(doc, "h3", "medal-family-title", el(doc, "span", "family-name", ct(lang, "fam_" + f.id)),
           el(doc, "span", "family-count", f.earned + " / " + f.total)),
         el(doc, "ul", "medal-grid", cards.map((e) => medalCard(doc, lang, byId.get(e.id), m.maxLevel))),
       ),
@@ -239,7 +265,7 @@ function medalsPage(doc, lang, m) {
   }
   const hidden = md.list.filter((e) => e.hidden).length;
   if (hidden) kids.push(el(doc, "p", "medal-hidden", ct(lang, "medHidden", hidden)));
-  return page(doc, "medals", "medal-page", ct(lang, "medTitle"), ct(lang, "medLead"), ...kids);
+  return page(doc, "medals", "medal-page", ct(lang, "medTitle"), null, ...kids);
 }
 
 // ---- Stufenfluss und Erfahrungsquellen -----------------------------------------------------------------------------------
@@ -256,7 +282,7 @@ function deathDots(doc, lang, n) {
 
 function flowBlock(doc, lang, flow) {
   const box = el(doc, "div", "flow");
-  if (flow.complete === 0) box.appendChild(el(doc, "p", "chron-empty", ct(lang, "flowEmpty")));
+  if (flow.complete === 0) box.appendChild(emptyState(doc, "map-level", ct(lang, "flowEmpty")));
   const list = el(doc, "ol", "flow-list");
   for (const c of flow.cols) {
     const cls = "flow-row" + (c.current ? " current" : "") + (c.fastest ? " fastest" : "") + (c.slowest ? " slowest" : "");
@@ -287,7 +313,7 @@ function sourcesBlock(doc, lang, src) {
   const box = el(doc, "div", "src");
   box.appendChild(el(doc, "h3", "chron-sub", ct(lang, "srcTitle")));
   if (src.total <= 0) {
-    box.appendChild(el(doc, "p", "chron-empty", ct(lang, "srcEmpty")));
+    box.appendChild(emptyState(doc, "map-milestone", ct(lang, "srcEmpty")));
     return box;
   }
   box.appendChild(el(doc, "p", "chron-lead-small", ct(lang, "srcLead") + " " + ct(lang, "srcTotal", fmtNumber(lang, src.total))));
@@ -369,7 +395,7 @@ function dungeonBody(doc, lang, ctx, run) {
       el(doc, "ul", "dg-group", group.map((g) =>
         el(doc, "li", "dg-member",
           el(doc, "span", "dg-member-name", clean(g.name, 50)),
-          el(doc, "span", "dg-member-sub", [classText(lang, g.cls), g.level ? ct(lang, "dgLv", g.level) : null, g.seconds ? fmtDuration(lang, g.seconds) : null].filter(Boolean).join(" · ")),
+          el(doc, "span", "dg-member-sub", [g.cls ? el(doc, "span", classColorClass(g.cls) || "cls", classText(lang, g.cls)) : null, g.level ? ct(lang, "dgLv", g.level) : null, g.seconds ? fmtDuration(lang, g.seconds) : null].filter(Boolean).flatMap((x, i) => (i ? [" · ", x] : [x]))),
         ))),
     );
   } else {
@@ -422,40 +448,78 @@ function dungeonBody(doc, lang, ctx, run) {
   return body;
 }
 
+// Emblem der Zeile (Addon Media/KillEmblems.tga): Boss besiegt = Boss-Emblem, sonst das schlichte
+const runEmblem = (run) => (run.bossesDefeated > 0 ? "emblem-boss" : "emblem-normal");
+
+// Zelle mit Beschriftung für die schmale Ansicht (data-label nur aus den eigenen Texten)
+function cell(doc, cls, label, ...children) {
+  const td = el(doc, "td", cls, ...children);
+  if (label) td.setAttribute("data-label", label);
+  return td;
+}
+
+// Ein Lauf = eine Tabellenzeile; der Knopf im Namen klappt die Einzelheiten (Bosse, Gruppe, Tode, Funde, Quests) darunter auf.
+// Der Rumpf entsteht erst beim ersten Aufklappen; der erste Lauf ist offen und gleich fertig.
+let runSeq = 0;
 function dungeonRun(doc, lang, ctx, run, index) {
   const name = run.name ? clean(run.name, 60) : ct(lang, "dgUnknown");
   const diff = difficultyName(lang, run.difficultyID);
-  const summary = el(doc, "summary", "dg-summary",
-    el(doc, "span", "dg-name", name),
-    diff ? el(doc, "span", "dg-diff", diff) : null,
-    el(doc, "span", "dg-date", dateText(lang, run.t0)),
-    el(doc, "span", "dg-dur", fmtDuration(lang, run.seconds)),
-    el(doc, "span", "dg-badges",
-      el(doc, "span", "dg-badge", ctn(lang, "dgBosses", run.bossesDefeated)),
-      run.deathsCount > 0 ? el(doc, "span", "dg-badge red", ctn(lang, "dgDeaths", run.deathsCount)) : el(doc, "span", "dg-badge", ct(lang, "dgNoDeaths")),
-    ),
+  const id = "dg-run-" + ++runSeq;
+  const toggle = el(doc, "button", "dg-toggle", el(doc, "span", "dg-name", name));
+  toggle.type = "button";
+  toggle.setAttribute("aria-controls", id);
+  const sub = [diff, run.endKnown ? null : ct(lang, "dgEndUnknown")].filter(Boolean).join(" · ");
+  const deaths = run.deathsCount > 0
+    ? el(doc, "span", "dg-badge red", ctn(lang, "dgDeaths", run.deathsCount))
+    : el(doc, "span", "dg-badge", ct(lang, "dgNoDeaths"));
+  const row = el(doc, "tr", "dg-row",
+    cell(doc, "dg-cell-name", null,
+      el(doc, "div", "dg-name-cell", icon(doc, runEmblem(run), "dg-emblem", [40, 40]),
+        el(doc, "div", "dg-name-text", toggle, sub ? el(doc, "span", "dg-diff", sub) : null))),
+    cell(doc, "r", ct(lang, "dgColLevel"), run.level0 ? String(run.level0) : "–"),
+    cell(doc, "r", ct(lang, "dgColTime"), fmtDuration(lang, run.seconds)),
+    cell(doc, "r", ct(lang, "dgColBosses"), el(doc, "span", "dg-badge", fmtNumber(lang, run.bossesDefeated))),
+    cell(doc, "r", ct(lang, "dgColDeaths"), deaths),
+    cell(doc, "r dg-date", ct(lang, "dgColDate"), dateText(lang, run.t0)),
   );
-  const det = el(doc, "details", "dg-run", summary);
-  if (index === 0) det.setAttribute("open", "");
-  // der Rumpf (Gruppe, Funde ...) entsteht erst beim Aufklappen; der erste Lauf ist offen und gleich fertig
+  const detailCell = el(doc, "td", "dg-detail-cell");
+  detailCell.setAttribute("colspan", "6");
+  const detail = el(doc, "tr", "dg-detail", detailCell);
+  detail.setAttribute("id", id);
+  const tbody = el(doc, "tbody", "dg-run", row, detail);
   let built = false;
-  const build = () => {
-    if (built) return;
-    built = true;
-    det.appendChild(dungeonBody(doc, lang, ctx, run));
+  let open = false;
+  const set = (v) => {
+    open = v;
+    if (open && !built) {
+      built = true;
+      detailCell.appendChild(dungeonBody(doc, lang, ctx, run));
+    }
+    detail.hidden = !open;
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
   };
-  if (index === 0) build();
-  det.addEventListener("toggle", build);
-  return el(doc, "li", "dg-item-row", det);
+  toggle.addEventListener("click", () => set(!open));
+  set(index === 0);
+  return tbody;
 }
 
 function dungeonsPage(doc, lang, m) {
   const dg = m.dungeons;
   const kids = [];
-  if (!dg.count) kids.push(el(doc, "p", "chron-empty", ct(lang, "dgEmpty")));
+  if (!dg.count) kids.push(emptyState(doc, "emblem-normal", ct(lang, "dgEmpty")));
   else {
     kids.push(el(doc, "p", "dg-count", ctn(lang, "dgRuns", dg.count)));
-    kids.push(pagedList(doc, lang, "ol", "dg-list", dg.runs, (run, i) => dungeonRun(doc, lang, m.ctx, run, i)));
+    const head = el(doc, "tr", null,
+      el(doc, "th", null, ct(lang, "dgColDungeon")),
+      el(doc, "th", "r", ct(lang, "dgColLevel")),
+      el(doc, "th", "r", ct(lang, "dgColTime")),
+      el(doc, "th", "r", ct(lang, "dgColBosses")),
+      el(doc, "th", "r", ct(lang, "dgColDeaths")),
+      el(doc, "th", "r", ct(lang, "dgColDate")),
+    );
+    for (const th of head.childNodes) th.setAttribute("scope", "col");
+    const table = el(doc, "table", "dg-table", el(doc, "thead", null, head));
+    kids.push(pagedList(doc, lang, table, null, dg.runs, (run, i) => dungeonRun(doc, lang, m.ctx, run, i)));
     if (dg.truncated) kids.push(el(doc, "p", "dg-note", ct(lang, "dgTruncated")));
   }
   return page(doc, "dungeons", "dg-page", ct(lang, "dgTitle"), ct(lang, "dgLead"), ...kids);
@@ -466,7 +530,7 @@ function dungeonsPage(doc, lang, m) {
 function deathsPage(doc, lang, m) {
   const list = m.deaths.slice().reverse(); // neueste zuerst
   const kids = [];
-  if (!list.length) kids.push(el(doc, "p", "chron-empty", ct(lang, "dtEmpty")));
+  if (!list.length) kids.push(emptyState(doc, "map-hearth", ct(lang, "dtEmpty")));
   else {
     kids.push(el(doc, "p", "dg-count", ctn(lang, "dtCount", list.length)));
     kids.push(
@@ -476,7 +540,7 @@ function deathsPage(doc, lang, m) {
           .filter(Boolean)
           .join(" · ");
         return el(doc, "li", "death-row",
-          el(doc, "span", "death-icon", "✝"),
+          el(doc, "span", "death-icon", icon(doc, "map-death", "death-img", [28, 28])),
           el(doc, "span", "death-body", el(doc, "span", "death-text", causeText(lang, d)), el(doc, "span", "death-sub", sub)),
           el(doc, "span", "death-date", dateText(lang, d.t) + " " + timeText(lang, d.t)),
         );
@@ -526,18 +590,29 @@ export function renderChronicle(doc, { model, journal, lang }) {
 
   const book = el(doc, "div", "book chron-book");
   book.setAttribute("lang", lang === "en" ? "en" : "de");
-  const nav = el(doc, "nav", "chron-nav no-print");
+  const nav = el(doc, "nav", "subnav chron-nav no-print");
   nav.setAttribute("aria-label", ct(lang, "navLabel"));
+  const win = doc.defaultView || null;
+  const reduce = !!(win && typeof win.matchMedia === "function" && win.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const btns = [];
   for (const [key, label, nodes] of sections) {
-    const b = el(doc, "button", "chron-nav-btn", label);
+    const b = el(doc, "button", "subnav-btn chron-nav-btn", label);
     b.type = "button";
     b.addEventListener("click", () => {
+      for (const o of btns) o.setAttribute("aria-current", o === b ? "true" : "false");
       const target = nodes[0];
-      if (target && typeof target.scrollIntoView === "function") target.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (target && typeof target.scrollIntoView === "function") target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
     });
     b.setAttribute("data-target", key);
+    b.setAttribute("aria-current", btns.length === 0 ? "true" : "false");
+    btns.push(b);
     nav.appendChild(b);
     for (const n of nodes) book.appendChild(n);
   }
-  return el(doc, "div", "chron-view", nav, book);
+  const p = model.profile;
+  const head = el(doc, "div", "sec-head chron-head",
+    el(doc, "h2", "sec-title", ct(lang, "chronTitle")),
+    p && p.entries ? el(doc, "p", "chron-entries", ct(lang, "chronEntries", fmtNumber(lang, p.entries))) : null,
+  );
+  return el(doc, "div", "chron-view", head, nav, book);
 }

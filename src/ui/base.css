@@ -1,0 +1,124 @@
+/* Grundlage der Seite: eine Papierfläche über die ganze Höhe, Spectral, Knöpfe, Segmente, Felder, Hinweise, Fokus.
+   Ersetzt den Buch-Stil des Exports (core/style.css wird von der Seite nicht mehr geladen). */
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; background: var(--c-paper); }
+html, body { margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  background: var(--c-paper);
+  color: var(--c-ink);
+  font-family: var(--font);
+  font-size: var(--fs-base);
+  line-height: var(--lh-text);
+  font-variant-numeric: lining-nums;
+  -webkit-font-smoothing: antialiased;
+}
+#app { min-height: 100vh; display: flex; flex-direction: column; }
+#app > main { flex: 1 0 auto; }
+img { display: block; max-width: 100%; }
+h1, h2, h3, h4 { margin: 0; line-height: var(--lh-tight); font-weight: var(--fw-strong); }
+p { margin: 0; }
+.num, time, .tnum { font-variant-numeric: tabular-nums lining-nums; }
+.muted { color: var(--c-ink-muted); }
+.noscript { padding: var(--s-6); font-family: Georgia, serif; }
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+.wrap { width: 100%; max-width: var(--content-max); margin: 0 auto; padding: 0 var(--gutter); }
+
+:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+/* Text aus der Datei bleibt in seinem Element (Bidi) */
+.journal-name, .hero-meta, .char-card span, .file-name b, .tip-title, .tip-line, .chapter-chip, .journey-title,
+.chron-book :is(p, li, dt, dd, span, strong, h2, h3, h4, td, th) { unicode-bidi: isolate; }
+
+/* ---- Knöpfe ---------------------------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+  min-height: var(--touch); padding: 0 var(--s-4);
+  font: inherit; font-weight: var(--fw-strong); line-height: 1.2; text-align: center;
+  border-radius: var(--radius-1); border: var(--border) solid var(--c-line);
+  background: transparent; color: var(--c-ink); cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease), filter var(--dur-fast) var(--ease);
+}
+.btn:hover { background: var(--c-hover); }
+.btn.primary { background: var(--c-accent); border-color: var(--c-accent); color: var(--c-on-accent); }
+.btn.primary:hover { background: var(--c-accent); filter: brightness(1.08); }
+.btn:disabled { opacity: 0.55; cursor: progress; }
+.btn-icon { width: 14px; height: 14px; flex: none; }
+
+/* Segment-Gruppe: gewählt = invertiert (Zone/Kontinent, Tempo, Sprache, Ausschnitt) */
+.seg { display: inline-flex; flex-wrap: wrap; border: var(--border) solid var(--c-line); border-radius: var(--radius-1); max-width: 100%; }
+.seg-btn, .lang-btn {
+  min-height: calc(var(--touch) - 2px); min-width: var(--touch); padding: 0 var(--s-3);
+  font: inherit; background: transparent; color: var(--c-ink); border: 0; cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.seg > button + button { border-left: var(--border) solid var(--c-line); }
+.seg-btn:hover, .lang-btn:hover { background: var(--c-hover); }
+.seg-btn[aria-pressed="true"], .lang-btn[aria-pressed="true"] { background: var(--c-sel-bg); color: var(--c-sel-fg); font-weight: var(--fw-strong); }
+
+/* Felder */
+.field { display: grid; gap: var(--s-1); min-width: 0; }
+.field-label { font-size: var(--fs-sm); color: var(--c-ink-muted); }
+select {
+  min-height: var(--touch); padding: 0 var(--s-6) 0 var(--s-3); font: inherit; color: var(--c-ink);
+  background-color: var(--c-paper); border: var(--border) solid var(--c-line); border-radius: var(--radius-1);
+  max-width: 100%;
+}
+select option { background: var(--c-paper); color: var(--c-ink); }
+input[type="checkbox"] { accent-color: var(--c-accent); width: 20px; height: 20px; margin: 0; flex: none; }
+input[type="range"] { accent-color: var(--c-accent); }
+progress { accent-color: var(--c-bronze); }
+
+/* ---- Hinweise ------------------------------------------------------------------------------------------- */
+.alert, .notice { display: grid; gap: var(--s-2); justify-items: start; margin: 0 0 var(--s-5); padding: var(--s-3) var(--s-4); max-width: 72ch; }
+.alert { border-left: 4px solid var(--c-accent); }
+.notice { border-left: 4px solid var(--c-bronze); }
+.alert-title { font-size: var(--fs-md); }
+.alert-text { color: var(--c-ink); }
+.alert .btn { margin-top: var(--s-1); }
+
+.empty {
+  display: grid; gap: var(--s-2); justify-items: start;
+  padding: var(--s-4) var(--s-5); border: var(--border) dashed var(--c-line); border-radius: var(--radius-1);
+}
+.empty-icon { width: 48px; height: 48px; }
+.empty-title { font-size: var(--fs-md); }
+.empty-text { color: var(--c-ink-muted); max-width: 60ch; }
+
+/* ---- Abschnitte ---------------------------------------------------------------------------------------- */
+.sec-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-4); }
+.eyebrow { font-size: var(--fs-sm); color: var(--c-ink-muted); }
+.sec-title { font-size: var(--fs-lg); overflow-wrap: anywhere; }
+
+/* Unterreiter als Textlinks: aktiv fett + 2 px Bronze */
+.subnav { display: flex; flex-wrap: wrap; gap: 0 var(--s-4); margin: var(--s-3) 0 0; padding: 0; list-style: none; }
+.subnav-btn {
+  display: inline-flex; align-items: center; min-height: var(--touch); padding: 0;
+  font: inherit; text-align: left; color: var(--c-ink-muted); background: none; cursor: pointer;
+  border: 0; border-bottom: 2px solid transparent;
+  transition: color var(--dur-fast) var(--ease);
+}
+.subnav-btn:hover { color: var(--c-ink); }
+.subnav-btn[aria-pressed="true"], .subnav-btn[aria-current="true"] { color: var(--c-ink); font-weight: var(--fw-strong); border-bottom-color: var(--c-bronze); }
+
+/* Klassen in Klassenfarbe (Text, keine Symbole) */
+.cls { font-weight: var(--fw-strong); }
+.cls-WARRIOR { color: var(--cls-WARRIOR); } .cls-PALADIN { color: var(--cls-PALADIN); } .cls-HUNTER { color: var(--cls-HUNTER); }
+.cls-ROGUE { color: var(--cls-ROGUE); } .cls-PRIEST { color: var(--cls-PRIEST); } .cls-SHAMAN { color: var(--cls-SHAMAN); }
+.cls-MAGE { color: var(--cls-MAGE); } .cls-WARLOCK { color: var(--cls-WARLOCK); } .cls-DRUID { color: var(--cls-DRUID); }
+.cls-DEATHKNIGHT { color: var(--cls-DEATHKNIGHT); } .cls-MONK { color: var(--cls-MONK); } .cls-DEMONHUNTER { color: var(--cls-DEMONHUNTER); }
+.cls-EVOKER { color: var(--cls-EVOKER); }
+
+/* ---- Druck ---------------------------------------------------------------------------------------------- */
+@media print {
+  :root { color-scheme: light; }
+  html, body { background: #fff !important; color: #2B2118; }
+  .no-print, .topbar, .alert, .notice, .intro, .chooser { display: none !important; }
+  a { color: inherit; text-decoration: none; }
+}

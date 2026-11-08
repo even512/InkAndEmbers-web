@@ -4,7 +4,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { model, medal, makeDb, thanenOpts, THANEN, L, block, GUID, T0 } from "./helpers/chronik-sv.mjs";
-import { MEDAL_STEPS, SEALS, TOUGH_DEATHS } from "../src/chronik/medals.mjs";
+import { MEDAL_STEPS, SEALS, TOUGH_DEATHS, healthReadable } from "../src/chronik/medals.mjs";
 import { dungeonDetail, dungeonGroup } from "../src/chronik/dungeons.mjs";
 import { fld, num } from "../src/chronik/log.mjs";
 
@@ -14,11 +14,14 @@ const ADDON_CHRONIK = fileURLToPath(new URL("../../EveN_ForeverChronicle/addon/I
 const rep = (n, make, from = 10) => Array.from({ length: n }, (_, i) => make(from + i * 10, i));
 
 describe("Medaillen: Katalog", () => {
-  it("35 Medaillen in 9 Familien, 29 mit drei Stufen und 6 einmalige: zusammen 93 Stufen", () => {
+  it("35 Medaillen in 9 Familien, 29 mit drei Stufen und 6 einmalige: zusammen 93 Stufen (in Forever ohne Um Haaresbreite: 34/90)", () => {
     const { m } = model({ lines: [L(0, "L", 1, "x", 1, 16001, "deDE", 3600)] });
     expect(m.medals.list).toHaveLength(35);
-    expect(m.medals.total).toBe(35);
-    expect(m.medals.stepsTotal).toBe(93);
+    expect(m.medals.total).toBe(34);
+    expect(m.medals.stepsTotal).toBe(90);
+    const open = model({ lines: [L(0, "L", 1, "x", 1, 16001, "deDE", 3600)], diag: { hpEnd: "ok" } }).m;
+    expect(open.medals.total).toBe(35);
+    expect(open.medals.stepsTotal).toBe(93);
     expect(m.medals.families).toHaveLength(9);
     expect(SEALS.filter((s) => s.steps)).toHaveLength(29);
     expect(SEALS.filter((s) => !s.steps).map((s) => s.id).sort()).toEqual(["continent", "epic", "guild", "level60", "mount", "raid"]);
@@ -191,6 +194,21 @@ describe("Medaillen: Regeln (gespiegelt aus den Addon-Tests)", () => {
     const forever = model({ lines: [L(0, "L", 1, "x", 1, 16001, "deDE", 3600)] }).m;
     expect(medal(forever, "profession").hidden).toBeUndefined();
     expect(forever.maxLevel).toBe(60);
+  });
+
+  it("Forever: Um Haaresbreite ist verborgen wie im Addon (Leben am Kampfende geheim), außer die Datei meldet es lesbar oder es ist verdient", () => {
+    const base = [L(0, "L", 1, "x", 1, 16001, "deDE", 3600)];
+    expect(medal(model({ lines: base }).m, "close_win").hidden).toBe(true);
+    expect(medal(model({ lines: base, diag: { hpEnd: "secret" } }).m, "close_win").hidden).toBe(true);
+    expect(medal(model({ lines: base, diag: { state: { healthSecret: true } } }).m, "close_win").hidden).toBe(true);
+    expect(medal(model({ lines: base, diag: { hpEnd: "ok" } }).m, "close_win").hidden).toBeUndefined();
+    expect(healthReadable({ diag: { hpEnd: "ok" } }, "forever")).toBe(true);
+    expect(healthReadable({}, "forever")).toBe(false);
+    expect(healthReadable({}, null)).toBe(true);
+    // ein schon verdienter knapper Sieg bleibt sichtbar
+    const won = model({ lines: [...base, ...rep(5, (dt) => L(dt, "KF", 30, 1, 100, 0, 50, 3, 1, 0, 10, 1429))] }).m;
+    expect(medal(won, "close_win").count).toBeGreaterThan(0);
+    expect(medal(won, "close_win").hidden).toBeUndefined();
   });
 });
 

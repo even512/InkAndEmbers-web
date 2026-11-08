@@ -1,6 +1,7 @@
 // Seitenaufbau: Datei laden (Ablegen oder Auswahl), Charakter wählen, Sprache umschalten, Reiter Reise/Chronik.
 // Läuft nur im Browser; nichts verlässt den Rechner (die CSP der Seite verbietet jede Anfrage).
 // Sicherheit: Alles aus der Datei geht nur über Textknoten (createTextNode via el()) hinaus; kein HTML-String irgendwo.
+// Bilder kommen nur aus public/img/ mit festen Namen (identity.mjs), nie aus Dateidaten.
 import { buildJournal } from "../core/journal-model.mjs";
 import { fmtNumber } from "../core/i18n.mjs";
 import { el } from "../core/render.mjs";
@@ -10,8 +11,10 @@ import { loadSvFile, errorMessage } from "./load-file.mjs";
 import { pickDroppedFile, hasFiles } from "./drop.mjs";
 import { createJourneyView } from "./journey.mjs";
 import { renderChroniclePanel } from "../chronik/index.mjs";
+import { icon, portraitImg, classSpan } from "./identity.mjs";
 
 const LANG_KEY = "iae-lang";
+const VIEWS = [["journey", "tabJourney", "tab-reise"], ["chronicle", "tabChronicle", "tab-chronik"]];
 
 function readStoredLang(win) {
   try {
@@ -45,6 +48,7 @@ export function startApp(doc, win) {
   };
   let loadToken = 0;
   let journey = null; // { guid, db, view } Reise-Ansicht des gewählten Charakters (bleibt über render() erhalten)
+  let focusTab = false; // nach Pfeiltaste: Fokus auf den neuen Reiter setzen
 
   const root = doc.getElementById("app");
   const picker = doc.createElement("input");
@@ -141,8 +145,14 @@ export function startApp(doc, win) {
     return b;
   }
 
+  function charInfo(c) {
+    const ch = state.file && state.file.db && state.file.db.chars ? state.file.db.chars[c.guid] : null;
+    const info = ch && ch.info && typeof ch.info === "object" ? ch.info : {};
+    return { raceFile: typeof info.raceFile === "string" ? info.raceFile : null, race: c.race, faction: c.faction };
+  }
+
   function langSwitch() {
-    const wrap = el(doc, "div", "lang-switch");
+    const wrap = el(doc, "div", "seg lang-switch");
     wrap.setAttribute("role", "group");
     wrap.setAttribute("aria-label", t(state.lang, "language"));
     for (const l of ["de", "en"]) {
@@ -158,53 +168,37 @@ export function startApp(doc, win) {
     return wrap;
   }
 
+  // Auswahlfeld mit kurzer, vollständiger Beschriftung (Name – Realm, Stufe); keine Abschneidung
   function charLabel(c) {
     let label = safeText(c.name, 40);
     if (c.realm) label += " – " + safeText(c.realm, 40);
-    const parts = [label];
-    if (c.level !== null) parts.push(t(state.lang, "charLevel", c.level));
-    if (c.cls) parts.push(safeText(c.cls, 40));
-    return parts.join(" · ");
+    if (c.level !== null) label += ", " + t(state.lang, "charLevel", c.level);
+    return label;
   }
 
   function toolbar() {
-    const bar = el(doc, "header", "toolbar no-print");
-    bar.appendChild(el(doc, "div", "brand", el(doc, "span", "brand-mark", "❦"), el(doc, "span", "brand-name", t(state.lang, "siteTitle"))));
-    const tools = el(doc, "div", "tools");
+    const bar = el(doc, "header", "topbar no-print");
+    const brand = el(doc, "div", "brand",
+      icon(doc, "book-icon", "brand-icon", [32, 32]),
+      el(doc, "span", "brand-name", t(state.lang, "brandName")),
+      el(doc, "span", "brand-sub", t(state.lang, "brandSub")),
+    );
+    const inner = el(doc, "div", "wrap topbar-inner", brand);
     if (state.file) {
-      tools.appendChild(el(doc, "span", "file-name", t(state.lang, "loadedFile", state.file.name)));
-      tools.appendChild(button("btn ghost", t(state.lang, "otherFile"), () => picker.click()));
-      const sel = el(doc, "select", "char-select");
-      sel.setAttribute("aria-label", t(state.lang, "chooseChar"));
-      if (!state.guid) {
-        const blank = el(doc, "option", null, "…");
-        blank.value = "";
-        blank.selected = true;
-        sel.appendChild(blank);
-      }
-      for (const c of state.file.characters) {
-        const o = el(doc, "option", null, charLabel(c));
-        o.value = c.guid;
-        if (c.guid === state.guid) o.selected = true;
-        sel.appendChild(o);
-      }
-      sel.addEventListener("change", () => {
-        state.error = null;
-        selectCharacter(sel.value || null);
-        render();
-      });
-      tools.appendChild(sel);
+      inner.appendChild(el(doc, "p", "file-name", t(state.lang, "loadedFile", state.file.name)));
+      inner.appendChild(button("btn other-file", t(state.lang, "otherFile"), () => picker.click()));
     }
-    tools.appendChild(langSwitch());
-    bar.appendChild(tools);
+    inner.appendChild(langSwitch());
+    bar.appendChild(inner);
     return bar;
   }
 
   function dropZone() {
-    return el(doc, "section", "intro no-print",
-      el(doc, "h1", "intro-title", t(state.lang, "siteTitle")),
+    return el(doc, "section", "intro wrap no-print",
+      el(doc, "h1", "intro-title", t(state.lang, "introTitle")),
       el(doc, "p", "intro-lead", t(state.lang, "siteLead")),
       el(doc, "div", "dropzone",
+        icon(doc, "book-icon", "drop-icon", [48, 48]),
         el(doc, "p", "drop-title", t(state.lang, "dropTitle")),
         el(doc, "p", "drop-or", t(state.lang, "dropOr")),
         button("btn primary", t(state.lang, "dropPick"), () => picker.click()),
@@ -214,25 +208,43 @@ export function startApp(doc, win) {
     );
   }
 
+  function metaLine(c) {
+    const parts = [];
+    if (c.level !== null) parts.push(t(state.lang, "charSummaryLevel", c.level));
+    if (c.race) parts.push(safeText(c.race, 40));
+    if (c.cls) parts.push(classSpan(doc, c.classFile, safeText(c.cls, 40)));
+    if (c.realm) parts.push(safeText(c.realm, 40));
+    const out = [];
+    parts.forEach((p, i) => {
+      if (i) out.push(" · ");
+      out.push(p);
+    });
+    return out;
+  }
+
   function charChooser() {
     const list = el(doc, "div", "char-cards");
     for (const c of state.file.characters) {
       list.appendChild(button("char-card", [
-        el(doc, "span", "char-name", safeText(c.name, 40)),
-        el(doc, "span", "char-meta", [c.level !== null ? t(state.lang, "charLevel", c.level) : null, c.race ? safeText(c.race, 40) : null, c.cls ? safeText(c.cls, 40) : null].filter(Boolean).join(" · ")),
-        el(doc, "span", "char-realm", [c.realm ? safeText(c.realm, 40) : null, t(state.lang, "charLines", fmtNumber(state.lang, c.lines))].filter(Boolean).join(" · ")),
+        portraitImg(doc, charInfo(c), "char-portrait", 56),
+        el(doc, "span", "char-text",
+          el(doc, "span", "char-name", safeText(c.name, 40)),
+          el(doc, "span", "char-meta", metaLine(c)),
+          el(doc, "span", "char-realm", t(state.lang, "charLines", fmtNumber(state.lang, c.lines))),
+        ),
       ], () => {
         state.error = null;
         selectCharacter(c.guid);
         render();
       }));
     }
-    return el(doc, "section", "chooser no-print", el(doc, "h2", "chooser-title", t(state.lang, "chooseChar")), list);
+    return el(doc, "section", "chooser wrap no-print", el(doc, "h2", "chooser-title", t(state.lang, "chooseChar")), list);
   }
 
   function alertBox(kind, m) {
-    const box = el(doc, "div", kind + " no-print", t(state.lang, m.key, ...m.args));
+    const box = el(doc, "div", kind + " no-print", el(doc, "p", "alert-text", t(state.lang, m.key, ...m.args)));
     box.setAttribute("role", kind === "alert" ? "alert" : "status");
+    if (kind === "alert") box.appendChild(button("btn", t(state.lang, "pickOther"), () => picker.click()));
     return box;
   }
 
@@ -240,17 +252,78 @@ export function startApp(doc, win) {
     return state.file ? state.file.characters.find((c) => c.guid === state.guid) || null : null;
   }
 
+  function charSelect() {
+    const sel = el(doc, "select", "char-select");
+    sel.setAttribute("id", "char-select");
+    if (!state.guid) {
+      const blank = el(doc, "option", null, "…");
+      blank.value = "";
+      blank.selected = true;
+      sel.appendChild(blank);
+    }
+    for (const c of state.file.characters) {
+      const o = el(doc, "option", null, charLabel(c));
+      o.value = c.guid;
+      if (c.guid === state.guid) o.selected = true;
+      sel.appendChild(o);
+    }
+    sel.addEventListener("change", () => {
+      state.error = null;
+      selectCharacter(sel.value || null);
+      render();
+    });
+    const label = el(doc, "label", "field-label", t(state.lang, "charField"));
+    label.setAttribute("for", "char-select");
+    return el(doc, "div", "field hero-field", label, sel);
+  }
+
+  function hero() {
+    const c = currentCharacter();
+    if (!c) return null;
+    return el(doc, "section", "hero",
+      portraitImg(doc, charInfo(c), "portrait", 80),
+      el(doc, "div", "hero-who",
+        el(doc, "h1", "journal-name", safeText(c.name, 40)),
+        el(doc, "p", "hero-meta", metaLine(c)),
+      ),
+      charSelect(),
+    );
+  }
+
+  function selectView(id) {
+    if (state.view === id) return;
+    state.view = id;
+    if (journey && id !== "journey") journey.view.pause();
+    render();
+    if (journey && id === "journey") journey.view.shown();
+  }
+
   function tabs() {
-    const bar = el(doc, "div", "view-tabs no-print");
-    bar.setAttribute("role", "group");
+    const bar = el(doc, "div", "tabs no-print");
+    bar.setAttribute("role", "tablist");
     bar.setAttribute("aria-label", t(state.lang, "tabsLabel"));
-    for (const [id, key] of [["journey", "tabJourney"], ["chronicle", "tabChronicle"]]) {
-      bar.appendChild(button("tab-btn" + (state.view === id ? " active" : ""), t(state.lang, key), () => {
-        state.view = id;
-        if (journey && id !== "journey") journey.view.pause();
-        render();
-        if (journey && id === "journey") journey.view.shown();
-      }, (b) => b.setAttribute("aria-pressed", state.view === id ? "true" : "false")));
+    const ids = VIEWS.map(([id]) => id);
+    for (const [id, key, art] of VIEWS) {
+      const on = state.view === id;
+      bar.appendChild(button("tab-btn" + (on ? " active" : ""), [icon(doc, art, "tab-cap", [37, 34]), el(doc, "span", "tab-text", t(state.lang, key))], () => selectView(id), (b) => {
+        b.setAttribute("role", "tab");
+        b.setAttribute("id", "tab-" + id);
+        b.setAttribute("aria-selected", on ? "true" : "false");
+        b.setAttribute("aria-controls", "view-panel");
+        b.setAttribute("tabindex", on ? "0" : "-1");
+        b.addEventListener("keydown", (e) => {
+          const i = ids.indexOf(id);
+          let next = null;
+          if (e.key === "ArrowRight") next = ids[(i + 1) % ids.length];
+          else if (e.key === "ArrowLeft") next = ids[(i - 1 + ids.length) % ids.length];
+          else if (e.key === "Home") next = ids[0];
+          else if (e.key === "End") next = ids[ids.length - 1];
+          if (next === null) return;
+          if (e.preventDefault) e.preventDefault();
+          focusTab = true;
+          selectView(next);
+        });
+      }));
     }
     return bar;
   }
@@ -266,27 +339,23 @@ export function startApp(doc, win) {
     return journey.view.element;
   }
 
-  // Platzhalter für Chronik/Statistik (W5)
   function journalShell() {
-    const c = currentCharacter();
-    const meta = c
-      ? [c.level !== null ? t(state.lang, "charSummaryLevel", c.level) : null, c.race ? safeText(c.race, 40) : null, c.cls ? safeText(c.cls, 40) : null, c.realm ? safeText(c.realm, 40) : null].filter(Boolean).join(" · ")
-      : "";
-    const head = el(doc, "section", "journal-head",
-      el(doc, "h1", "journal-name", c ? safeText(c.name, 40) : ""),
-      meta ? el(doc, "p", "journal-meta", meta) : null,
-      c ? el(doc, "p", "journal-meta", t(state.lang, "charSummaryLines", fmtNumber(state.lang, c.lines))) : null,
-    );
-    const panel = state.view === "journey"
+    const inner = state.view === "journey"
       ? journeyPanel()
       : renderChroniclePanel(doc, { db: state.file.db, guid: state.guid, journal: state.journal, lang: state.lang });
-    return el(doc, "div", "journal-shell", head, tabs(), panel);
+    const panel = el(doc, "div", "view-panel", inner);
+    panel.setAttribute("id", "view-panel");
+    panel.setAttribute("role", "tabpanel");
+    panel.setAttribute("aria-labelledby", "tab-" + state.view);
+    return el(doc, "div", "journal-shell wrap", hero(), tabs(), panel);
   }
 
   function footer() {
     return el(doc, "footer", "site-footer no-print",
-      el(doc, "p", "footer-main", t(state.lang, "footer")),
-      el(doc, "p", "footer-privacy", t(state.lang, "footerPrivacy")),
+      el(doc, "div", "wrap",
+        el(doc, "p", "footer-main", t(state.lang, "footer")),
+        el(doc, "p", "footer-privacy", t(state.lang, "footerPrivacy")),
+      ),
     );
   }
 
@@ -295,16 +364,23 @@ export function startApp(doc, win) {
     const c = state.journal ? currentCharacter() : null;
     doc.title = c ? t(state.lang, "journalOf") + " " + safeText(c.name, 40) : t(state.lang, "siteTitle");
     const main = el(doc, "main", "main");
-    if (state.error) main.appendChild(alertBox("alert", state.error));
-    if (state.notice) main.appendChild(alertBox("notice", state.notice));
-    if (state.file && state.file.schemaWarning) main.appendChild(alertBox("notice", { key: "schemaWarn", args: [state.file.schemaWarning] }));
-    if (state.busy) main.appendChild(alertBox("notice", { key: "reading", args: [] }));
+    const msgs = el(doc, "div", "wrap messages");
+    if (state.error) msgs.appendChild(alertBox("alert", state.error));
+    if (state.notice) msgs.appendChild(alertBox("notice", state.notice));
+    if (state.file && state.file.schemaWarning) msgs.appendChild(alertBox("notice", { key: "schemaWarn", args: [state.file.schemaWarning] }));
+    if (state.busy) msgs.appendChild(alertBox("notice", { key: "reading", args: [] }));
+    if (msgs.childNodes.length) main.appendChild(msgs);
     if (!state.file) main.appendChild(dropZone());
     else if (!state.journal) main.appendChild(charChooser());
     else main.appendChild(journalShell());
     const nodes = [toolbar(), main, footer()];
     while (root.firstChild) root.removeChild(root.firstChild);
     for (const n of nodes) root.appendChild(n);
+    if (focusTab) {
+      focusTab = false;
+      const tab = doc.getElementById ? doc.getElementById("tab-" + state.view) : null;
+      if (tab && typeof tab.focus === "function") tab.focus();
+    }
   }
 
   render();

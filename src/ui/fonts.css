@@ -1,4 +1,3 @@
-/* Schriften (SIL Open Font License 1.1, unverändert aus dem Addon): Spectral und Caveat, lokal aus public/fonts/. */
+/* Schrift (SIL Open Font License 1.1, unverändert aus dem Addon): Spectral 400/600, lokal aus public/fonts/. Eine Familie für alles. */
 @font-face { font-family: "Spectral"; font-style: normal; font-weight: 400; font-display: swap; src: url("/fonts/Spectral-Regular.ttf") format("truetype"); }
 @font-face { font-family: "Spectral"; font-style: normal; font-weight: 600; font-display: swap; src: url("/fonts/Spectral-SemiBold.ttf") format("truetype"); }
-@font-face { font-family: "Caveat"; font-style: normal; font-weight: 700; font-display: swap; src: url("/fonts/Caveat-Bold.ttf") format("truetype"); }

@@ -15,8 +15,10 @@ import { startApp } from "../src/ui/app.mjs";
 const SAMPLE = readFileSync(fileURLToPath(new URL("./fixtures/journal-export-sample.lua", import.meta.url)), "utf8");
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
-const ALLOWED_TAGS = new Set(["DIV", "SECTION", "H1", "H2", "H3", "H4", "P", "SPAN", "BUTTON", "UL", "OL", "LI", "DL", "DT", "DD", "DETAILS", "SUMMARY", "NAV", "ARTICLE", "ASIDE", "HEADER", "STRONG", "HR"]);
-const ALLOWED_ATTRS = new Set(["lang", "type", "role", "aria-label", "data-pct", "data-section", "data-target", "open"]);
+const ALLOWED_TAGS = new Set(["DIV", "SECTION", "H1", "H2", "H3", "H4", "P", "SPAN", "BUTTON", "UL", "OL", "LI", "DL", "DT", "DD", "DETAILS", "SUMMARY", "NAV", "ARTICLE", "ASIDE", "HEADER", "STRONG", "HR", "IMG", "TABLE", "THEAD", "TBODY", "TR", "TH", "TD"]);
+const ALLOWED_ATTRS = new Set(["lang", "type", "role", "aria-label", "data-pct", "data-section", "data-target", "open", "aria-current", "aria-expanded", "aria-controls", "id", "colspan", "scope", "data-label", "src", "alt", "width", "height", "decoding"]);
+// Bilder nur aus public/img/ mit festem Namen (Addon-Kunst), nie aus Dateidaten
+const IMG_SRC = /^img\/(seal-([1-9]|[12]\d|3[0-5])|ring-(bronze|silver|gold|legendary)|portrait-(human|dwarf|nightelf|gnome|orc|undead|tauren|troll|skyborne)|emblem-(boss|elite|normal)|map-(level|milestone|death|boss|rare|photo|hearth|current))\.webp$/;
 const FORBIDDEN_CHARS = ["‮", "‪", "‭", "​", "⁦", "⁩", " "];
 
 const hasCls = (n, c) => n.className.split(" ").includes(c);
@@ -51,7 +53,7 @@ describe("Aufbau der Ansicht", () => {
   });
 
   it("Medaillen: alle 35 Karten in 9 Familien, verdiente mit Stufe, offene mit Voraussetzung", () => {
-    expect(byClass(view, "medal-card")).toHaveLength(35);
+    expect(byClass(view, "medal-card")).toHaveLength(35); // ohne Client-Kennung (keine L-Zeile) bleibt „Um Haaresbreite“ sichtbar
     expect(byClass(view, "medal-family")).toHaveLength(9);
     const cards = byClass(view, "medal-card");
     const open = cards.find((c) => c.textContent.includes("Weltenbummler"));
@@ -59,6 +61,10 @@ describe("Aufbau der Ansicht", () => {
     expect(open.textContent).toContain("Bronze · 6 Gebiete");
     expect(hasCls(open, "locked")).toBe(true);
     expect(byClass(view, "medal-count")[0].textContent).toMatch(/^\d+ von 35 Medaillen · \d+ von 93 Stufen$/);
+    // Medaillenbild: Motiv aus dem Katalog + Ring; offene Medaille mit dem Ring der ersten Stufe
+    const imgs = findAll(open, (n) => n.tagName === "IMG").map((n) => n.attributes.src);
+    expect(imgs).toEqual(["img/seal-1.webp", "img/ring-bronze.webp"]);
+    expect(byClass(open, "medal-bar-fill")[0].attributes["data-pct"]).toBeDefined();
   });
 
   it("Stufenfluss: eine Zeile je Stufe, Balken mit Prozentbreite (data-pct), Tode als Punkte", () => {
@@ -78,6 +84,12 @@ describe("Aufbau der Ansicht", () => {
     }
     expect(text).not.toContain("Carl-");
     expect(hasCls(byClass(run, "dg-badge").find((b) => b.textContent === "3 Tode"), "red")).toBe(true);
+    // echte Tabelle mit Kopf, Emblem und beschrifteten Zellen
+    expect(run.tagName).toBe("TBODY");
+    const table = findAll(view, (n) => n.tagName === "TABLE")[0];
+    expect(findAll(table, (n) => n.tagName === "TH").map((n) => n.textContent)).toEqual(["Dungeon", "Stufe", "Dauer", "Bosse", "Tode", "Datum"]);
+    expect(byClass(run, "dg-emblem")[0].attributes.src).toBe("img/emblem-boss.webp");
+    expect(findAll(run, (n) => n.attributes["data-label"] === "Bosse")[0].textContent).toBe("4");
   });
 
   it("Tode: Liste mit Ort und Ursache, neueste zuerst", () => {
@@ -119,10 +131,14 @@ describe("Lazy und Mehr anzeigen", () => {
     const runs = byClass(view, "dg-run");
     expect(runs).toHaveLength(3);
     expect(byClass(runs[0], "dg-body")).toHaveLength(1);
-    expect(runs[0].attributes.open).toBe("");
+    expect(byClass(runs[0], "dg-toggle")[0].attributes["aria-expanded"]).toBe("true");
     expect(byClass(runs[1], "dg-body")).toHaveLength(0);
-    runs[1].dispatch("toggle", {});
-    runs[1].dispatch("toggle", {});
+    const toggle = byClass(runs[1], "dg-toggle")[0];
+    expect(toggle.attributes["aria-expanded"]).toBe("false");
+    toggle.click();
+    expect(toggle.attributes["aria-expanded"]).toBe("true");
+    toggle.click();
+    expect(toggle.attributes["aria-expanded"]).toBe("false");
     expect(byClass(runs[1], "dg-body")).toHaveLength(1);
     expect(runs[1].textContent).toContain("Kalte Halle");
   });
@@ -165,7 +181,13 @@ describe("Sicherheit (Schadtext in allen angezeigten Feldern)", () => {
       expect(ALLOWED_TAGS.has(n.tagName), n.tagName).toBe(true);
       for (const k of Object.keys(n.attributes)) expect(ALLOWED_ATTRS.has(k), k).toBe(true);
     }
-    expect(findAll(view, (n) => ["SCRIPT", "IMG", "IFRAME", "A", "STYLE"].includes(n.tagName))).toHaveLength(0);
+    expect(findAll(view, (n) => ["SCRIPT", "IFRAME", "A", "STYLE"].includes(n.tagName))).toHaveLength(0);
+    const imgs = findAll(view, (n) => n.tagName === "IMG");
+    expect(imgs.length).toBeGreaterThan(30);
+    for (const n of imgs) {
+      expect(n.attributes.src, n.attributes.src).toMatch(IMG_SRC);
+      expect(n.attributes.alt).toBe("");
+    }
     const text = view.textContent;
     expect(text).toContain("<script>alert(1)</script>");
     expect(text).toContain("<img src=x onerror=alert(2)>");
@@ -254,7 +276,7 @@ describe("Einbindung in die App", () => {
     expect(app.state.view).toBe("chronicle");
     expect(byClass(appRoot, "chron-book")).toHaveLength(1);
     expect(byClass(appRoot, "prof-name")[0].textContent).toBe("Mirela");
-    expect(byClass(appRoot, "medal-card")).toHaveLength(35);
+    expect(byClass(appRoot, "medal-card")).toHaveLength(34); // Forever-Datei: „Um Haaresbreite“ verborgen wie im Addon
     findAll(appRoot, (n) => hasCls(n, "lang-btn"))[1].click();
     expect(byClass(appRoot, "chron-nav-btn")[0].textContent).toBe("Character sheet");
     findAll(appRoot, (n) => hasCls(n, "tab-btn"))[0].click();

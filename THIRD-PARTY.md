@@ -7,7 +7,7 @@ Die Seite lädt zur Laufzeit nichts von außen: alles unten Genannte wird mit de
 | Bestandteil | Lizenz | Wo | Hinweis |
 |---|---|---|---|
 | Spectral (Production Type) | SIL OFL 1.1 | `public/fonts/Spectral-*.ttf`, Text: `public/fonts/OFL-Spectral.txt` | unverändert aus dem Addon Ink & Embers |
-| Caveat (The Caveat Project Authors) | SIL OFL 1.1 | `public/fonts/Caveat-Bold.ttf`, Text: `public/fonts/OFL-Caveat.txt` | unverändert aus dem Addon Ink & Embers |
+| Grafiken des Addons Ink & Embers (Lesezeichen, Medaillen, Kartenmarker, Embleme, Volks-Porträts, Buch-Symbol) | `public/img/`: alle Rechte vorbehalten (nicht MIT), Hinweis: `public/img/LICENSE-NOTE.md` | `public/img/*.webp` | aus `addon/InkAndEmbers/Media/` zugeschnitten (WebP), sonst unverändert |
 | Blizzard-Kartenkunst (WebP je uiMap und Sprache) | © Blizzard Entertainment, nicht-kommerzielle Fan-Nutzung, keine Lizenz an Dritte | `public/maps/forever/`, Hinweis: `public/maps/LICENSE-NOTE.md` | aus dem lokalen Spielclient (`scripts/extract-maps.mjs`) |
 | Mediabunny 1.65.2 (Vanilagy) – MP4/H.264 über WebCodecs | MPL-2.0 | im Bundle `assets/index-*.js`, unverändert aus npm `mediabunny`; Text: `public/licenses/MPL-2.0-mediabunny.txt` | Quelltext: https://github.com/Vanilagy/mediabunny (Tag v1.65.2) |
 | gifenc 1.0.3 (Matt DesLauriers) – GIF-Encoder | MIT | im GIF-Worker `assets/gif.worker-*.js`, unverändert aus npm `gifenc`; Text: `public/licenses/MIT-gifenc.txt` | |

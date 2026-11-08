@@ -53,17 +53,30 @@ function loadImage(win, urls) {
 async function loadFonts(doc) {
   if (!doc.fonts || typeof doc.fonts.load !== "function") return;
   try {
-    await Promise.all(["700 36px Caveat", "18px Spectral", "italic 600 17px Spectral", "700 11px Spectral"].map((f) => doc.fonts.load(f)));
+    await Promise.all(["600 32px Spectral", "18px Spectral", "600 17px Spectral", "600 14px Spectral"].map((f) => doc.fonts.load(f)));
   } catch {
     /* Ersatzschrift */
   }
 }
 
+// Addon-Symbole der Karte für Video/GIF/Bild (feste Dateien aus public/img/, wie die Marker der Seite)
+export const SHARE_ICONS = Object.freeze({ level: "map-level", milestone: "map-milestone", death: "map-death", boss: "map-boss", rare: "map-rare", discovery: "map-photo", current: "map-current" });
+
+async function loadIcons(win) {
+  const out = new Map();
+  await Promise.all(Object.entries(SHARE_ICONS).map(async ([kind, name]) => {
+    const img = await loadImage(win, ["img/" + name + ".webp"]);
+    if (img) out.set(kind, img);
+  }));
+  return out;
+}
+
 const nextFrame = (win) => new Promise((r) => (typeof win.requestAnimationFrame === "function" ? win.requestAnimationFrame(() => r()) : win.setTimeout(r, 0)));
 
-// opts: { journal, char, lang, data, prepareJourney, imageUrls(mapID, lang) -> [url], getContext() -> { mode, chapter, mapID } }
+// opts: { journal, char, lang, data, prepareJourney, imageUrls(mapID, lang) -> [url], getContext() -> { mode, chapter, mapID },
+//         chapterName(chapter, lang) -> Name in der Sprache der Seite (optional) }
 export function createSharePanel(doc, win, opts) {
-  const S = { lang: opts.lang, scope: "zone", range: -1, anon: false, busy: null, result: null, url: null, notice: null };
+  const S = { lang: opts.lang, scope: "zone", range: -1, anon: false, busy: null, result: null, url: null, notice: null, icons: null };
   const data = opts.data;
   const tl = data.trail.timeline;
   const hasTrail = data.trail.segments.length > 0;
@@ -155,7 +168,7 @@ export function createSharePanel(doc, win, opts) {
       rangeSel.appendChild(o);
     };
     opt(-1, st(L, "shRangeAll"));
-    data.chapters.forEach((c, i) => opt(i, st(L, "shRangeChapter", c.n, safeText(c.name || "", 60))));
+    data.chapters.forEach((c, i) => opt(i, st(L, "shRangeChapter", c.n, safeText((opts.chapterName && opts.chapterName(c, L)) || c.name || "", 60))));
     rangeSel.value = String(S.range);
     setText(doc, anonText, st(L, "shAnon"));
     anonBox.checked = S.anon;
@@ -252,7 +265,8 @@ export function createSharePanel(doc, win, opts) {
     const plan = planTimeline(range.p0, range.p1, { ...cfg, axisLength: tl.length });
     const images = new Map();
     const lang = S.lang;
-    const job0 = createFrameJob({ data: d, scope: S.scope, range, images, plan, info: { charName: opts.journal && opts.journal.name, lang }, anon, baseMapID: base });
+    if (!S.icons) S.icons = await loadIcons(win);
+    const job0 = createFrameJob({ data: d, scope: S.scope, range, images, plan, info: { charName: opts.journal && opts.journal.name, lang }, anon, baseMapID: base, icons: S.icons });
     await Promise.all(job0.mapIDs().map(async (id) => {
       const m = displayMap(id);
       images.set(id, m && m.art && m.mapID === id ? await loadImage(win, opts.imageUrls(id, lang)) : null);

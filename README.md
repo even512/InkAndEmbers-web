@@ -47,7 +47,8 @@ src/core/           Kopie aus EveN_ForeverChronicle/tools/journal-export/src/ (n
 src/trail/          parse-trail.mjs: Positionsspur prüfen, in Strecken zerlegen, Wiedergabe-Zeitachse
 src/geo/            map-geo.mjs (Zone <-> Kontinent, Anzeigekarte), index.json (generiert)
 src/ui/             Seite: app.mjs, load-file.mjs (Limits), drop.mjs, texts.mjs (DE/EN), safe-text.mjs, CSS
-public/fonts/       Spectral und Caveat (SIL OFL)
+public/fonts/       Spectral (SIL OFL), die einzige Schrift der Seite
+public/img/         Addon-Grafiken (Lesezeichen, Medaillen, Marker, Embleme, Porträts), alle Rechte vorbehalten
 scripts/            sync-core.mjs, build-map-index.mjs, extract-maps.mjs (Kartenkunst aus dem lokalen Client)
 scripts/data/       wago.tools-Schnappschüsse der Kartentabellen je Build
 tests/              Vitest + synthetische Fixtures (keine echten Spielerdaten)
@@ -78,5 +79,5 @@ unter Settings > Pages die Quelle „GitHub Actions“ wählen.
 
 ## Lizenz
 
-Quelltext: MIT (`LICENSE`). Schriften: SIL OFL 1.1. Kartenbilder und Blizzard-Inhalte: nicht unter MIT, siehe `LICENSE` und
-`THIRD-PARTY.md`.
+Quelltext: MIT (`LICENSE`). Schrift: SIL OFL 1.1. Grafiken unter `public/img/` (aus dem Addon): alle Rechte vorbehalten, siehe
+`public/img/LICENSE-NOTE.md`. Kartenbilder und Blizzard-Inhalte: nicht unter MIT, siehe `LICENSE` und `THIRD-PARTY.md`.

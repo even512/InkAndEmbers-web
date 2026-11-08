@@ -1,25 +1,33 @@
-// Reise-Ansicht: Karte (Canvas) mit Route, Flügen und Markern, Zoom/Pan (Maus, Rad, Touch, Tastatur), Tooltips,
-// Kapitelleiste je Zone, Umschalter Zone/Kontinent, Wiedergabe 20/60/180× mit Zeitleiste und mitlaufender Stufe,
-// Datum und Spielzeit. Gezeichnet wird mit map/renderer.mjs (dieselbe Routine nutzt das Video in W6).
+// Reise-Ansicht: Karte (Canvas) mit Route und Flügen, Marker als Knöpfe mit Addon-Symbolen (public/img/map-*.webp) darüber,
+// Zoom/Pan (Maus, Rad, Touch, Tastatur), Tooltips, Kapitel als Textreiter je Zone, Umschalter Zone/Kontinent, Wiedergabe
+// 20/60/180× mit Zeitleiste und mitlaufender Stufe, Kennzahlen „In diesem Kapitel“ und das Teilen-Feld (W6) daneben.
+// Gezeichnet wird mit map/renderer.mjs (dieselbe Routine nutzt das Video in W6).
 // Sicherheit: Texte aus der Datei nur über Textknoten (el) bzw. safeText ins Canvas; Kartenbilder nur aus maps/ der
-// eigenen Seite (img-src 'self'), der Pfad besteht nur aus einer geprüften Zahl. Keine Netzwerkanfragen sonst.
+// eigenen Seite (img-src 'self'), der Pfad besteht nur aus einer geprüften Zahl; Markersymbole nur aus einer festen Liste.
 import { parseLog } from "../core/journal-model.mjs";
 import { fmtDate, fmtDuration, fmtNumber } from "../core/i18n.mjs";
 import { el } from "../core/render.mjs";
 import { readCharacterTrail, fromAxis, positionAt } from "../trail/parse-trail.mjs";
 import { mapInfo } from "../geo/map-geo.mjs";
+import { zoneName } from "../geo/zone-names.mjs";
 import { buildMarkers, buildChapters, buildLabels, prepareMapScene, chooseMap, chapterAtAxis, levelTrack, levelAt, playedTrack, playedAt } from "../map/scene.mjs";
-import { drawFrame, fitView, zoomAt, panBy, clampView, hitMarker, DEFAULT_ASPECT, ZOOM_STEP, MARKER_STYLE } from "../map/renderer.mjs";
+import { drawFrame, fitView, zoomAt, panBy, clampView, hitMarker, transformFor, cutoffFor, headAt, DEFAULT_ASPECT, ZOOM_STEP } from "../map/renderer.mjs";
 import * as PB from "../map/playback.mjs";
 import { t } from "./texts.mjs";
 import { safeText } from "./safe-text.mjs";
+import { icon } from "./identity.mjs";
 import { createSharePanel } from "./share-panel.mjs";
 
 // Kartenbilder je Sprache (Ortsnamen stehen im Bild): maps/forever/<de|en>/<uiMapID>.webp, Rückfall en, dann Pergament
 export const MAP_DIR = "maps/forever/";
 export const MAP_LANGS = Object.freeze(["de", "en"]);
 const DRAG_START = 4;
+const HEAD_LOOKBACK = 30; // Sekunden: Richtung des Kopfes aus der Strecke davor
 const isMapId = (id) => Number.isInteger(id) && id > 0 && id <= 1e6;
+
+// Symbol je Markerart (Addon Media/MapIcons.tga, Theme.MAP_ICONS); Stufe 10/20/... = Meilenstein-Stern
+export const MARKER_ICON = Object.freeze({ level: "map-level", milestone: "map-milestone", death: "map-death", boss: "map-boss", rare: "map-rare", discovery: "map-photo" });
+export const markerIcon = (m) => (m.kind === "level" && Number.isFinite(m.level) && m.level % 10 === 0 ? MARKER_ICON.milestone : MARKER_ICON[m.kind] || MARKER_ICON.discovery);
 
 // Pfad des Kartenbilds (relativ zur Seite, gleiche Herkunft) oder null; Sprache nur aus der festen Liste
 export function mapImageUrl(mapID, lang = "en") {
@@ -31,6 +39,11 @@ export function mapImageUrl(mapID, lang = "en") {
 export function mapImageCandidates(mapID, lang) {
   const langs = MAP_LANGS.includes(lang) && lang !== "en" ? [lang, "en"] : ["en"];
   return langs.map((l) => mapImageUrl(mapID, l)).filter(Boolean);
+}
+
+// Name eines Kapitels/einer Karte in der Sprache der Seite: Addon-Tabelle (de/en), sonst der Name aus Datei bzw. Index
+export function placeName(lang, mapID, fallback) {
+  return zoneName(mapID, lang === "en" ? "en" : "de") || fallback || null;
 }
 
 // Tooltip-Zeilen eines Markers: [Titel, ...Zeilen] (alles schon gesäubert, nur als Text auszugeben)
@@ -68,6 +81,31 @@ export function prepareJourney(journal, char) {
   return { events, trail, markers, chapters, names, levels: levelTrack(journal, events), played: playedTrack(events, trail) };
 }
 
+// Kennzahlen eines Kapitels (Kapitel des Tagebuchs mit gleichem Beginn) oder der ganzen Reise -> { levels, played, quests, deaths, kills, places }
+export function journeyStats(journal, chapter) {
+  const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  if (chapter) {
+    const src = journal && Array.isArray(journal.chapters) ? journal.chapters.find((c) => c && c.start === chapter.t0) : null;
+    return {
+      levels: [num(chapter.minLevel), num(chapter.maxLevel)],
+      played: src ? num(src.active) : null,
+      quests: src ? num(src.quests) : null,
+      deaths: src ? num(src.deaths) : null,
+      kills: src ? num(src.kills) : null,
+      places: src && Array.isArray(src.discoveries) ? src.discoveries.length : null,
+    };
+  }
+  const s = journal && journal.stats ? journal.stats : {};
+  return {
+    levels: [num(journal && journal.firstLevel), num(journal && journal.level)],
+    played: num(s.played) ?? num(journal && journal.played),
+    quests: num(s.questsDone),
+    deaths: num(s.deaths),
+    kills: num(s.kills),
+    places: num(s.discoveries),
+  };
+}
+
 function clear(node) {
   while (node.firstChild) node.removeChild(node.firstChild);
 }
@@ -94,6 +132,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     height: 0,
     raf: 0,
     last: 0,
+    headAngle: 0,
     destroyed: false,
   };
   PB.setRange(S.pb, 0, tl.length);
@@ -109,20 +148,30 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     return e || null;
   };
   const darkQuery = win.matchMedia ? win.matchMedia("(prefers-color-scheme: dark)") : null;
+  const chapterName = (c) => (c ? placeName(S.lang, c.mapID, c.name) || t(S.lang, "jUnknown") : "");
 
-  const root = el(doc, "section", "view-panel journey-panel");
-  const title = el(doc, "h2", "panel-title journey-title");
+  // ---------------------------------------------------------------- Gerüst
+  const root = el(doc, "section", "journey-panel");
+  const eyebrow = el(doc, "p", "eyebrow journey-eyebrow");
+  const title = el(doc, "h2", "sec-title journey-title");
+  title.setAttribute("id", "journey-title");
+  root.setAttribute("aria-labelledby", "journey-title");
   const modeBar = el(doc, "div", "seg mode-switch");
   modeBar.setAttribute("role", "group");
-  const head = el(doc, "div", "journey-head", title, modeBar);
-  const chapterBar = el(doc, "div", "chapter-bar");
+  const head = el(doc, "div", "sec-head journey-head", el(doc, "div", "journey-heading", eyebrow, title), modeBar);
+  const chapterBar = el(doc, "div", "subnav chapter-bar");
   chapterBar.setAttribute("role", "group");
   const canvas = doc.createElement("canvas");
   canvas.className = "map-canvas";
   canvas.tabIndex = 0;
   canvas.setAttribute("role", "img");
+  const pins = el(doc, "div", "map-pins");
+  const headImg = icon(doc, "map-current", "map-head", [34, 34]);
+  headImg.hidden = true;
+  pins.appendChild(headImg);
   const tip = el(doc, "div", "map-tip");
   tip.setAttribute("role", "tooltip");
+  tip.setAttribute("id", "map-tip");
   tip.hidden = true;
   const zoomIn = el(doc, "button", "map-tool", "+");
   const zoomOut = el(doc, "button", "map-tool", "−");
@@ -131,7 +180,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
   const tools = el(doc, "div", "map-tools", zoomIn, zoomOut, zoomReset);
   const noArt = el(doc, "p", "map-note");
   noArt.hidden = true;
-  const frame = el(doc, "div", "map-frame", canvas, tools, tip, noArt);
+  const frame = el(doc, "div", "map-frame", canvas, pins, tools, tip, noArt);
   const playBtn = el(doc, "button", "btn primary play-btn");
   playBtn.type = "button";
   const speedBar = el(doc, "div", "seg speed-switch");
@@ -142,11 +191,15 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
   scrub.min = "0";
   scrub.max = "1000";
   scrub.step = "1";
+  const playback = el(doc, "div", "playback", playBtn, speedBar, el(doc, "div", "scrub-wrap", scrub));
   const info = el(doc, "p", "play-info");
-  const playback = el(doc, "div", "playback", playBtn, speedBar, scrub, info);
-  const legend = el(doc, "p", "map-legend");
+  info.setAttribute("aria-live", "polite");
+  const legend = el(doc, "ul", "map-legend");
   const notes = el(doc, "div", "journey-notes");
-  const emptyMsg = el(doc, "p", "panel-soon journey-empty");
+  const statsTitle = el(doc, "h3", "aside-title");
+  const stats = el(doc, "dl", "stats");
+  const statsBox = el(doc, "div", "journey-stats", statsTitle, stats);
+  const emptyBox = el(doc, "div", "empty journey-empty");
 
   const ctx = canvas.getContext ? canvas.getContext("2d") : null;
   // Teilen (W6): Video/GIF/PNG aus derselben Zeichenroutine; kennt Ansicht und Kapitel über getContext
@@ -154,6 +207,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     ? createSharePanel(doc, win, {
       journal, char, lang, data, prepareJourney,
       imageUrls: (mapID, l) => mapImageCandidates(mapID, l),
+      chapterName: (c, l) => placeName(l, c.mapID, c.name),
       getContext: () => ({ mode: S.mode, chapter: S.chapter, mapID: S.map ? S.map.mapID : null }),
     })
     : null;
@@ -192,7 +246,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
         e = { status: "loading", img: null };
         images.set(key, e);
         const hadArt = [...images.entries()].some(([k, v]) => k !== key && k.endsWith(":" + map.mapID) && v.status === "ok");
-                const attempt = (i) => {
+        const attempt = (i) => {
           if (i >= urls.length) {
             e.status = "missing";
             draw();
@@ -222,9 +276,14 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     return e && e.status === "ok" ? e.img.naturalWidth / e.img.naturalHeight : DEFAULT_ASPECT;
   }
 
+  function mapTitle() {
+    if (!S.map) return "";
+    const info = mapInfo(S.map.mapID);
+    return placeName(S.lang, S.map.mapID, data.names.get(S.map.mapID) || (info ? info.name : null)) || "#" + S.map.mapID;
+  }
+
   function frameState() {
     const e = curImage();
-    const info = S.map ? mapInfo(S.map.mapID) : null;
     return {
       width: S.width,
       height: S.height,
@@ -233,10 +292,12 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
       image: e && e.status === "ok" ? e.img : null,
       aspect: aspect(),
       view: S.view,
-      title: (S.map && data.names.get(S.map.mapID)) || (info ? info.name : S.map ? "#" + S.map.mapID : ""),
+      title: mapTitle(),
       theme: darkQuery && darkQuery.matches ? "dark" : "light",
       timeline: tl,
       highlight: S.hover,
+      drawMarkers: false, // Marker liegen als Knöpfe über der Karte
+      drawHead: false,
     };
   }
 
@@ -256,7 +317,77 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     tip.hidden = true;
     imageFor(next);
     resetView();
+    buildPins();
     return true;
+  }
+
+  // ---------------------------------------------------------------- Marker als Knöpfe
+  let pinList = []; // [{ m, btn }]
+  function buildPins() {
+    for (const p of pinList) pins.removeChild(p.btn);
+    pinList = [];
+    if (!S.map) return;
+    const sc = sceneFor(S.map.mapID);
+    for (const m of sc.markers) {
+      const btn = el(doc, "button", "map-pin map-pin-" + m.kind, icon(doc, markerIcon(m), "map-pin-img", [28, 28]));
+      btn.type = "button";
+      btn.setAttribute("aria-label", markerLines(S.lang, m).join(", "));
+      btn.setAttribute("aria-describedby", "map-tip");
+      btn.hidden = true;
+      const at = () => {
+        const T = transformFor(frameState());
+        return { x: T.ox + m.px * T.sx, y: T.oy + m.py * T.sy };
+      };
+      btn.addEventListener("mouseenter", () => {
+        const p = at();
+        showTip(m, p.x, p.y);
+      });
+      btn.addEventListener("focus", () => {
+        const p = at();
+        showTip(m, p.x, p.y);
+      });
+      btn.addEventListener("click", () => {
+        const p = at();
+        showTip(m, p.x, p.y);
+      });
+      btn.addEventListener("mouseleave", () => showTip(null));
+      btn.addEventListener("blur", () => showTip(null));
+      btn.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") showTip(null);
+      });
+      pins.insertBefore ? pins.insertBefore(btn, headImg) : pins.appendChild(btn);
+      pinList.push({ m, btn });
+    }
+  }
+
+  function relabelPins() {
+    for (const p of pinList) p.btn.setAttribute("aria-label", markerLines(S.lang, p.m).join(", "));
+  }
+
+  function placePins(st) {
+    const T = transformFor(st);
+    const cut = cutoffFor(st, cutAxis());
+    for (const p of pinList) {
+      const x = T.ox + p.m.px * T.sx, y = T.oy + p.m.py * T.sy;
+      const show = p.m.t <= cut && x >= -14 && y >= -14 && x <= st.width + 14 && y <= st.height + 14;
+      p.btn.hidden = !show;
+      if (show && p.btn.style) p.btn.style.transform = "translate(" + x.toFixed(1) + "px, " + y.toFixed(1) + "px)";
+      if (p.btn.classList) {
+        if (p.m === S.hover) p.btn.classList.add("hot");
+        else p.btn.classList.remove("hot");
+      }
+    }
+    // Kopf der Wiedergabe: Addon-Pfeil, gedreht in Laufrichtung
+    const h = st.scene && Number.isFinite(cut) ? headAt(st.scene, cut) : null;
+    headImg.hidden = !h;
+    if (h) {
+      const prev = headAt(st.scene, cut - HEAD_LOOKBACK);
+      if (prev) {
+        const dx = (h.x - prev.x) * T.sx, dy = (h.y - prev.y) * T.sy;
+        if (dx * dx + dy * dy > 1) S.headAngle = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+      }
+      if (headImg.style) headImg.style.transform = "translate(" + (T.ox + h.x * T.sx).toFixed(1) + "px, " + (T.oy + h.y * T.sy).toFixed(1) + "px) rotate(" + S.headAngle.toFixed(0) + "deg)";
+    }
   }
 
   // ---------------------------------------------------------------- Zeichnen
@@ -278,9 +409,45 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     const first = S.width === 0;
     measure();
     if (first) resetView();
-    drawFrame(ctx, frameState(), cutAxis());
+    const st = frameState();
+    drawFrame(ctx, st, cutAxis());
+    placePins(st);
     const e = curImage();
     noArt.hidden = !(e && e.status === "missing");
+  }
+
+  function statItem(label, value, unit) {
+    return el(doc, "div", "stat-item", el(doc, "dt", null, label), el(doc, "dd", null, value, unit ? el(doc, "small", null, " " + unit) : null));
+  }
+
+  function updateStats() {
+    const L = S.lang;
+    const ch = S.chapter >= 0 ? data.chapters[S.chapter] : null;
+    const s = journeyStats(journal, ch);
+    if (s.played === null && !ch && tl.t1 !== null) s.played = playedAt(data.played, tl.t1); // ohne /played: aktive Zeit der Spur
+    setText(doc, statsTitle, t(L, ch ? "jStatsChapter" : "jStatsTrip"));
+    clear(stats);
+    const n = (v) => (v === null ? "–" : fmtNumber(L, v));
+    const [a, b] = s.levels;
+    stats.appendChild(statItem(t(L, "jStLevels"), a !== null && b !== null && a !== b ? a + "–" + b : n(b ?? a)));
+    stats.appendChild(statItem(t(L, "jStPlayed"), s.played === null ? "–" : fmtDuration(L, s.played)));
+    stats.appendChild(statItem(t(L, "jStQuests"), n(s.quests)));
+    stats.appendChild(statItem(t(L, "jStDeaths"), n(s.deaths)));
+    stats.appendChild(statItem(t(L, "jStKills"), n(s.kills)));
+    stats.appendChild(statItem(t(L, "jStPlaces"), n(s.places)));
+  }
+
+  function updateHead() {
+    const L = S.lang;
+    const ch = S.chapter >= 0 ? data.chapters[S.chapter] : null;
+    if (ch) {
+      const lv = ch.minLevel !== null && ch.maxLevel !== null ? (ch.minLevel === ch.maxLevel ? t(L, "jLevelSpan", ch.minLevel) : t(L, "jLevelRange", ch.minLevel, ch.maxLevel)) : null;
+      setText(doc, eyebrow, t(L, "jChapterChip", fmtNumber(L, ch.n)) + (lv ? " · " + lv : ""));
+      setText(doc, title, chapterName(ch));
+    } else {
+      setText(doc, eyebrow, t(L, "jWholeTrip"));
+      setText(doc, title, t(L, "journeyTitle"));
+    }
   }
 
   function updateInfo() {
@@ -288,12 +455,14 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     const ep = nowEpoch();
     const lvl = levelAt(data.levels, ep);
     const played = playedAt(data.played, ep);
-    const parts = [];
-    if (lvl !== null) parts.push(t(S.lang, "jInfoLevel", lvl));
-    parts.push(fmtDate(S.lang, ep));
-    if (played !== null) parts.push(t(S.lang, "jInfoPlayed", fmtDuration(S.lang, played)));
-    const text = parts.join(" · ");
-    setText(doc, info, text);
+    const rest = [];
+    if (played !== null) rest.push(t(S.lang, "jInfoPlayed", fmtDuration(S.lang, played)));
+    if (lvl !== null) rest.push(t(S.lang, "jInfoLevel", lvl));
+    const date = fmtDate(S.lang, ep);
+    clear(info);
+    info.appendChild(el(doc, "strong", "play-date", date));
+    if (rest.length) info.appendChild(el(doc, "span", "play-rest", " · " + rest.join(" · ")));
+    const text = [date, ...rest].join(" · ");
     scrub.value = String(Math.round(PB.frac(S.pb) * 1000));
     scrub.setAttribute("aria-valuetext", text);
     setText(doc, playBtn, t(S.lang, S.pb.playing ? "jPause" : "jPlay"));
@@ -301,7 +470,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     // laufendes Kapitel in der Leiste markieren
     const cur = S.chapter >= 0 ? S.chapter : chapterAtAxis(data.chapters, a === Infinity ? tl.length : a);
     for (const chip of chapterBar.childNodes) {
-      if (!chip.dataset) continue;
+      if (!chip.dataset || !chip.classList || typeof chip.classList.toggle !== "function") continue;
       const idx = Number(chip.dataset.idx);
       chip.classList.toggle("current", idx === cur && S.chapter < 0 && idx >= 0);
     }
@@ -342,7 +511,6 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     return b;
   }
 
-
   function selectChapter(i) {
     S.chapter = i;
     PB.pause(S.pb);
@@ -354,9 +522,13 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     refresh();
   }
 
+  function legendItem(art, label, cls) {
+    return el(doc, "li", "leg" + (cls ? " " + cls : ""), art, label);
+  }
+
   function buildControls() {
     const L = S.lang;
-    setText(doc, title, t(L, "journeyTitle"));
+    updateHead();
     clear(modeBar);
     modeBar.setAttribute("aria-label", t(L, "jModeLabel"));
     for (const [mode, key] of [["zone", "jModeZone"], ["continent", "jModeContinent"]]) {
@@ -370,18 +542,19 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     }
     clear(chapterBar);
     chapterBar.setAttribute("aria-label", t(L, "jChapters"));
-    const chip = (idx, label, sub) => {
-      const b = el(doc, "button", "chapter-chip" + (S.chapter === idx ? " active" : ""), el(doc, "span", "chip-num", label), sub ? el(doc, "span", "chip-name", sub) : null);
+    const chip = (idx, label, hint) => {
+      const b = el(doc, "button", "subnav-btn chapter-chip" + (S.chapter === idx ? " active" : ""), label);
       b.type = "button";
       if (b.dataset) b.dataset.idx = String(idx);
       b.setAttribute("aria-pressed", S.chapter === idx ? "true" : "false");
+      if (hint) b.setAttribute("aria-label", label + ", " + hint);
       b.addEventListener("click", () => selectChapter(idx));
       chapterBar.appendChild(b);
     };
     chip(-1, t(L, "jWholeTrip"), null);
     data.chapters.forEach((c, i) => {
       const lv = c.minLevel !== null && c.maxLevel !== null ? (c.minLevel === c.maxLevel ? t(L, "jLevelSpan", c.minLevel) : t(L, "jLevelRange", c.minLevel, c.maxLevel)) : null;
-      chip(i, t(L, "jChapterChip", fmtNumber(L, c.n)) + (lv ? " · " + lv : ""), c.name || t(L, "jUnknown"));
+      chip(i, fmtNumber(L, c.n) + " · " + chapterName(c), lv);
     });
     clear(speedBar);
     speedBar.setAttribute("aria-label", t(L, "jSpeedLabel"));
@@ -397,18 +570,23 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     zoomOut.setAttribute("aria-label", t(L, "jZoomOut"));
     zoomReset.setAttribute("aria-label", t(L, "jZoomReset"));
     setText(doc, noArt, t(L, "jNoArt"));
-    const mapName = S.map ? frameState().title : "";
-    canvas.setAttribute("aria-label", t(L, "jMapLabel", mapName));
+    canvas.setAttribute("aria-label", t(L, "jMapLabel", mapTitle()));
     clear(legend);
     legend.setAttribute("aria-label", t(L, "jLegend"));
-    legend.appendChild(el(doc, "span", "leg leg-route", t(L, "jLegRoute")));
-    legend.appendChild(el(doc, "span", "leg leg-flight", t(L, "jLegFlight")));
-    for (const [kind, key] of [["level", "jLegLevel"], ["death", "jLegDeath"], ["boss", "jLegBoss"], ["rare", "jLegRare"], ["discovery", "jLegDiscovery"]]) {
-      legend.appendChild(el(doc, "span", "leg leg-" + kind, el(doc, "span", "leg-dot", MARKER_STYLE[kind].glyph || "▲"), t(L, key)));
+    legend.appendChild(legendItem(el(doc, "span", "leg-line leg-route"), t(L, "jLegRoute"), "leg-route-item"));
+    legend.appendChild(legendItem(el(doc, "span", "leg-line leg-flight"), t(L, "jLegFlight"), "leg-flight-item"));
+    for (const [art, key] of [["map-level", "jLegLevel"], ["map-milestone", "jLegMilestone"], ["map-death", "jLegDeath"], ["map-boss", "jLegBoss"], ["map-rare", "jLegRare"], ["map-photo", "jLegDiscovery"]]) {
+      legend.appendChild(legendItem(icon(doc, art, "leg-icon", [22, 22]), t(L, key)));
     }
     clear(notes);
     const dropped = data.trail.stats ? data.trail.stats.linesDropped + data.trail.stats.blocksDropped : 0;
-    if (dropped > 0) notes.appendChild(el(doc, "p", "notice", t(L, "jDropped", fmtNumber(L, dropped))));
+    if (dropped > 0) {
+      const n = el(doc, "p", "notice", t(L, "jDropped", fmtNumber(L, dropped)));
+      n.setAttribute("role", "status");
+      notes.appendChild(n);
+    }
+    relabelPins();
+    updateStats();
     updateInfo();
   }
 
@@ -457,9 +635,9 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     for (const n of markerTip(doc, S.lang, m)) tip.appendChild(n);
     tip.hidden = false;
     if (tip.style) {
-      const left = Math.max(8, Math.min(S.width - 220, x + 14));
+      const left = Math.max(8, Math.min(S.width - 220, x + 18));
       tip.style.left = left + "px";
-      tip.style.top = Math.max(8, y - 12) + "px";
+      tip.style.top = Math.max(8, Math.min(S.height - 80, y - 12)) + "px";
     }
     draw();
   }
@@ -572,21 +750,32 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
   const onTheme = () => draw();
   if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener("change", onTheme);
 
+  function buildEmpty(L) {
+    clear(emptyBox);
+    emptyBox.appendChild(icon(doc, "map-photo", "empty-icon", [48, 48]));
+    emptyBox.appendChild(el(doc, "h3", "empty-title", t(L, "jNoTrailTitle")));
+    emptyBox.appendChild(el(doc, "p", "empty-text", t(L, "jNoTrail", safeText(journal && journal.name, 40))));
+  }
+
   // ---------------------------------------------------------------- Aufbau
   if (!hasTrail) {
+    setText(doc, eyebrow, "");
     setText(doc, title, t(lang, "journeyTitle"));
-    setText(doc, emptyMsg, t(lang, "jNoTrail", safeText(journal && journal.name, 40)));
-    root.appendChild(el(doc, "div", "journey-head", title));
-    root.appendChild(emptyMsg);
+    buildEmpty(lang);
+    root.appendChild(el(doc, "div", "sec-head journey-head", el(doc, "div", "journey-heading", title)));
+    root.appendChild(emptyBox);
   } else {
     root.appendChild(head);
     root.appendChild(chapterBar);
-    root.appendChild(frame);
+    const mainCol = el(doc, "div", "journey-main", frame);
     if (!ctx) frame.appendChild(el(doc, "p", "map-note", t(lang, "jNoCanvas")));
-    root.appendChild(playback);
-    root.appendChild(legend);
-    root.appendChild(notes);
-    if (share) root.appendChild(share.element);
+    mainCol.appendChild(playback);
+    mainCol.appendChild(info);
+    mainCol.appendChild(legend);
+    mainCol.appendChild(notes);
+    const aside = el(doc, "div", "journey-aside", statsBox);
+    if (share) aside.appendChild(share.element);
+    root.appendChild(el(doc, "div", "journey-body", mainCol, aside));
     buildControls();
     syncMap();
     buildControls(); // Kartenname im aria-label
@@ -603,7 +792,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
       if (share) share.setLang(l);
       if (!hasTrail) {
         setText(doc, title, t(l, "journeyTitle"));
-        setText(doc, emptyMsg, t(l, "jNoTrail", safeText(journal && journal.name, 40)));
+        buildEmpty(l);
         return;
       }
       buildControls();

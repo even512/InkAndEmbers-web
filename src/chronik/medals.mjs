@@ -1,5 +1,5 @@
-// Medaillen der Reise (35 Medaillen in 9 Familien, 29 davon in drei Stufen Bronze/Silber/Gold, 6 einmalige mit fester Stufe;
-// zusammen 93 Stufen). Portiert aus addon/InkAndEmbers/journal/model/Chronik.lua (MEDAL_STEPS, SEALS, EVAL.*, sealEntry): dieselben
+// Medaillen der Reise (36 Medaillen in 9 Familien, 30 davon in drei Stufen Bronze/Silber/Gold, 6 einmalige mit fester Stufe;
+// zusammen 96 Stufen). Portiert aus addon/InkAndEmbers/journal/model/Chronik.lua (MEDAL_STEPS, SEALS, EVAL.*, sealEntry): dieselben
 // Schwellen, dieselbe Zählweise, dieselben Belege. Reine Berechnung auf den Zeilen des Charakters, keine Texte, kein DOM.
 // Unterschied zum Addon: der Index (Listen/Zähler) wird hier aus den Zeilen selbst gebildet; "Tode" gibt es als Medaille nicht.
 import { isTable } from "../core/lua-parse.mjs";
@@ -19,6 +19,7 @@ export const MEDAL_STEPS = {
   close_win: [5, 20, 50], // knappe Siege (KF close)
   duel: [1, 10, 30], // gewonnene Duelle (DU win)
   quests: [75, 250, 500], // abgegebene Quests (QT)
+  zone_master: [1, 4, 10], // Zonen mit allen zählbaren Quests erledigt (counters.zonedone, nur Forever)
   reputation: [6, 7, 8], // beste Rufstufe: Wohlwollend / Respektvoll / Ehrfürchtig
   books: [3, 12, 30], // Bücher mit mindestens zwei Seiten (BK)
   profession: [150, 225, 300], // bester Beruf
@@ -58,6 +59,8 @@ export const SEALS = [
   { id: "close_win", family: "combat", steps: MEDAL_STEPS.close_win, retailHidden: true, needsHealth: true },
   { id: "duel", family: "combat", steps: MEDAL_STEPS.duel },
   { id: "quests", family: "lore", steps: MEDAL_STEPS.quests },
+  // Forever-Medaille (Addon 1.0.9): Motivzelle 36 = hinten angehängt, die Zellen der anderen bleiben (cell)
+  { id: "zone_master", family: "lore", steps: MEDAL_STEPS.zone_master, retailHidden: true, cell: 36 },
   { id: "reputation", family: "lore", steps: MEDAL_STEPS.reputation, unit: "standing" },
   { id: "books", family: "lore", steps: MEDAL_STEPS.books },
   { id: "profession", family: "lore", steps: MEDAL_STEPS.profession, unit: "skill", retailHidden: true },
@@ -85,7 +88,7 @@ export const SEALS = [
 ];
 
 // Zähler ohne Logzeile (counters des Charakters): id -> Zählergruppe
-const LIVE = { angler: ["fishing", false], gatherer: ["gather", false], companions: ["mates", true], social: ["emotes", false] };
+const LIVE = { angler: ["fishing", false], gatherer: ["gather", false], companions: ["mates", true], social: ["emotes", false], zone_master: ["zonedone", true] };
 
 // höchste Stufe des Clients: Forever 60; Retail nach Interface-Nummer (Annahme: 90 ab Midnight, 80 ab The War Within, sonst 70)
 export function maxLevelFor(flavor, iface) {
@@ -544,6 +547,8 @@ export function buildMedals(ctx, { flavor = null, maxLevel = 60, level = null } 
     const e = entryOf(seal, C, value || 0, proofs, saved);
     if (seal.id === "level60" && !e.earned && isFiniteNum(level)) e.level = Math.min(Math.floor(level), maxLevel);
     if (seal.id === "level60") e.top = maxLevel;
+    // Zähler fehlt (Addon ohne Zonendaten): nicht verdient, Fortschritt unbekannt
+    if (seal.id === "zone_master") e.unknown = !(isTable(ctx.char.counters) && isTable(ctx.char.counters.zonedone));
     const f = fam.get(seal.family);
     // auf dem Client nicht erreichbare Medaillen bleiben verborgen, solange nichts davon verdient ist (Retail; „Um Haaresbreite“
     // auch, wenn das Leben am Kampfende nicht lesbar ist, wie in Forever)

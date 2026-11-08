@@ -13,7 +13,10 @@ export const PAGE_STEP = 12; // so viele Läufe/Tode kommen je Klick auf "Mehr a
 const FLOW_DOTS_MAX = 8;
 
 // Medaillenbild = Motiv (Addon Media/Seals.tga, Zelle = Platz im Katalog, public/img/seal-<n>.webp) + Metallring der Stufe
-const SEAL_INDEX = new Map(SEALS.map((s, i) => [s.id, i + 1]));
+// Motivzelle: Platz im Altkatalog; später hinzugekommene Medaillen tragen ihre Zelle im Katalogfeld cell
+const SEAL_INDEX = new Map();
+let sealCell = 0;
+for (const s of SEALS) SEAL_INDEX.set(s.id, s.cell || ++sealCell);
 const RINGS = new Set(["bronze", "silver", "gold", "legendary"]);
 const QUALITY_CLASS = { 2: "chron-q2", 3: "chron-q3", 4: "chron-q4", 5: "chron-q5" };
 
@@ -167,6 +170,7 @@ function evidenceText(lang, s) {
 
 function progressText(lang, m, maxLevel) {
   if (m.stepped) {
+    if (m.unknown && !m.earned) return ct(lang, "medUnknown");
     if (m.need) {
       const tierName = ct(lang, "tierName_" + m.need.tier);
       let line;
@@ -195,7 +199,7 @@ function progressText(lang, m, maxLevel) {
 
 // Anteil bis zur nächsten Stufe (0..1) oder null, wenn kein Balken passt
 function progressShare(m) {
-  if (!m.stepped || !m.need || m.id === "tough") return null;
+  if (!m.stepped || !m.need || m.id === "tough" || (m.unknown && !m.earned)) return null;
   const v = Number(m.value), n = Number(m.need.value);
   return Number.isFinite(v) && Number.isFinite(n) && n > 0 ? Math.max(0, Math.min(1, v / n)) : null;
 }

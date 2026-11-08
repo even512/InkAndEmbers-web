@@ -14,16 +14,16 @@ const ADDON_CHRONIK = fileURLToPath(new URL("../../EveN_ForeverChronicle/addon/I
 const rep = (n, make, from = 10) => Array.from({ length: n }, (_, i) => make(from + i * 10, i));
 
 describe("Medaillen: Katalog", () => {
-  it("35 Medaillen in 9 Familien, 29 mit drei Stufen und 6 einmalige: zusammen 93 Stufen (in Forever ohne Um Haaresbreite: 34/90)", () => {
+  it("36 Medaillen in 9 Familien, 30 mit drei Stufen und 6 einmalige: zusammen 96 Stufen (in Forever ohne Um Haaresbreite: 35/93)", () => {
     const { m } = model({ lines: [L(0, "L", 1, "x", 1, 16001, "deDE", 3600)] });
-    expect(m.medals.list).toHaveLength(35);
-    expect(m.medals.total).toBe(34);
-    expect(m.medals.stepsTotal).toBe(90);
+    expect(m.medals.list).toHaveLength(36);
+    expect(m.medals.total).toBe(35);
+    expect(m.medals.stepsTotal).toBe(93);
     const open = model({ lines: [L(0, "L", 1, "x", 1, 16001, "deDE", 3600)], diag: { hpEnd: "ok" } }).m;
-    expect(open.medals.total).toBe(35);
-    expect(open.medals.stepsTotal).toBe(93);
+    expect(open.medals.total).toBe(36);
+    expect(open.medals.stepsTotal).toBe(96);
     expect(m.medals.families).toHaveLength(9);
-    expect(SEALS.filter((s) => s.steps)).toHaveLength(29);
+    expect(SEALS.filter((s) => s.steps)).toHaveLength(30);
     expect(SEALS.filter((s) => !s.steps).map((s) => s.id).sort()).toEqual(["continent", "epic", "guild", "level60", "mount", "raid"]);
     expect(m.medals.earned).toBe(0);
   });
@@ -120,6 +120,17 @@ describe("Medaillen: Regeln (gespiegelt aus den Addon-Tests)", () => {
     const e = medal(m, "quests");
     expect(e).toMatchObject({ value: 1, count: 1, tier: "gold" });
     expect(e.steps[2]).toMatchObject({ at: T0 + 5, level: 12 });
+  });
+
+  it("Zonenkenner: Zonen aus counters.zonedone (1/4/10); fehlt der Zähler, ist nichts verdient und der Fortschritt unbekannt; in Retail ausgeblendet", () => {
+    const lines = [L(1, "LV", 5, 1429, 0, 0, "")];
+    const none = medal(model({ lines }).m, "zone_master");
+    expect(none).toMatchObject({ earned: false, value: 0, unknown: true });
+    const zero = medal(model({ lines, counters: { zonedone: {} } }).m, "zone_master");
+    expect(zero).toMatchObject({ earned: false, value: 0, unknown: false });
+    const four = medal(model({ lines, counters: { zonedone: { 1429: 1, 1411: 1, 1412: 1, 1413: 1, 1414: 0 } } }).m, "zone_master");
+    expect(four).toMatchObject({ earned: true, value: 4, count: 2, tier: "silver", need: { tier: "gold", value: 10 } });
+    expect(none.family).toBe("lore");
   });
 
   it("Zähler ohne Logzeile (Angeln, Sammeln, Mitspieler, Emotes) kommen aus counters", () => {

@@ -18,7 +18,7 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const ALLOWED_TAGS = new Set(["DIV", "SECTION", "H1", "H2", "H3", "H4", "P", "SPAN", "BUTTON", "UL", "OL", "LI", "DL", "DT", "DD", "DETAILS", "SUMMARY", "NAV", "ARTICLE", "ASIDE", "HEADER", "STRONG", "HR", "IMG", "TABLE", "THEAD", "TBODY", "TR", "TH", "TD"]);
 const ALLOWED_ATTRS = new Set(["lang", "type", "role", "aria-label", "data-pct", "data-section", "data-target", "open", "aria-current", "aria-expanded", "aria-controls", "id", "colspan", "scope", "data-label", "src", "alt", "width", "height", "decoding"]);
 // Bilder nur aus public/img/ mit festem Namen (Addon-Kunst), nie aus Dateidaten
-const IMG_SRC = /^img\/(seal-([1-9]|[12]\d|3[0-5])|ring-(bronze|silver|gold|legendary)|portrait-(human|dwarf|nightelf|gnome|orc|undead|tauren|troll|skyborne)|emblem-(boss|elite|normal)|map-(level|milestone|death|boss|rare|photo|hearth|current))\.webp$/;
+const IMG_SRC = /^img\/(seal-([1-9]|[12]\d|3[0-6])|ring-(bronze|silver|gold|legendary)|portrait-(human|dwarf|nightelf|gnome|orc|undead|tauren|troll|skyborne)|emblem-(boss|elite|normal)|map-(level|milestone|death|boss|rare|photo|hearth|current))\.webp$/;
 const FORBIDDEN_CHARS = ["‮", "‪", "‭", "​", "⁦", "⁩", " "];
 
 const hasCls = (n, c) => n.className.split(" ").includes(c);
@@ -52,15 +52,15 @@ describe("Aufbau der Ansicht", () => {
     for (const s of ["Testa", "Mensch · Paladin", "Probenwacht", "Unterwegs seit", "Spielzeit", "Stufe"]) expect(text).toContain(s);
   });
 
-  it("Medaillen: alle 35 Karten in 9 Familien, verdiente mit Stufe, offene mit Voraussetzung", () => {
-    expect(byClass(view, "medal-card")).toHaveLength(35); // ohne Client-Kennung (keine L-Zeile) bleibt „Um Haaresbreite“ sichtbar
+  it("Medaillen: alle 36 Karten in 9 Familien, verdiente mit Stufe, offene mit Voraussetzung", () => {
+    expect(byClass(view, "medal-card")).toHaveLength(36); // ohne Client-Kennung (keine L-Zeile) bleibt „Um Haaresbreite“ sichtbar
     expect(byClass(view, "medal-family")).toHaveLength(9);
     const cards = byClass(view, "medal-card");
     const open = cards.find((c) => c.textContent.includes("Weltenbummler"));
     expect(open.textContent).toContain("Verschiedene Gebiete betreten.");
     expect(open.textContent).toContain("Bronze · 6 Gebiete");
     expect(hasCls(open, "locked")).toBe(true);
-    expect(byClass(view, "medal-count")[0].textContent).toMatch(/^\d+ von 35 Medaillen · \d+ von 93 Stufen$/);
+    expect(byClass(view, "medal-count")[0].textContent).toMatch(/^\d+ von 36 Medaillen · \d+ von 96 Stufen$/);
     // Medaillenbild: Motiv aus dem Katalog + Ring; offene Medaille mit dem Ring der ersten Stufe
     const imgs = findAll(open, (n) => n.tagName === "IMG").map((n) => n.attributes.src);
     expect(imgs).toEqual(["img/seal-1.webp", "img/ring-bronze.webp"]);
@@ -276,7 +276,7 @@ describe("Einbindung in die App", () => {
     expect(app.state.view).toBe("chronicle");
     expect(byClass(appRoot, "chron-book")).toHaveLength(1);
     expect(byClass(appRoot, "prof-name")[0].textContent).toBe("Mirela");
-    expect(byClass(appRoot, "medal-card")).toHaveLength(34); // Forever-Datei: „Um Haaresbreite“ verborgen wie im Addon
+    expect(byClass(appRoot, "medal-card")).toHaveLength(35); // Forever-Datei: „Um Haaresbreite“ verborgen wie im Addon
     findAll(appRoot, (n) => hasCls(n, "lang-btn"))[1].click();
     expect(byClass(appRoot, "chron-nav-btn")[0].textContent).toBe("Character sheet");
     findAll(appRoot, (n) => hasCls(n, "tab-btn"))[0].click();

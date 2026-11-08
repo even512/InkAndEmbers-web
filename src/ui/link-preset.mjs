@@ -2,7 +2,8 @@
 // Das Fragment (alles nach #) verlässt den Browser nie. Hier wird es streng geprüft, nie als HTML verwendet.
 
 const MAX_LEN = 80;
-const CHAR_OK = /^[\p{L}\p{M}'’ -]+$/u; // Buchstaben (auch Umlaute/Akzente), Bindestrich, Apostroph, Leerzeichen
+const NAME_OK = /^[\p{L}\p{M}'’ ]+$/u; // Name: Buchstaben (auch Umlaute/Akzente), Apostroph, Leerzeichen
+const REALM_OK = /^[\p{L}\p{M}'’ 0-9-]+$/u; // Realm zusätzlich Ziffern und Bindestrich (z. B. „Realm 10 RP“, „Azjol-Nerub“)
 const VIEWS = ["journey", "chronicle"];
 
 // "#c=Mirela-Gehennas&v=journey" -> { c: "Mirela-Gehennas", v: "journey" } oder null (ungültig/leer)
@@ -17,7 +18,10 @@ export function parseLinkFragment(hash) {
   const c = params.get("c");
   if (typeof c !== "string") return null;
   const name = c.normalize("NFC").trim();
-  if (name.length === 0 || name.length > MAX_LEN || !CHAR_OK.test(name)) return null;
+  if (name.length === 0 || name.length > MAX_LEN) return null;
+  const cut = name.indexOf("-"); // der Name hat keinen Bindestrich, der Realm darf einen haben
+  const who = cut < 0 ? name : name.slice(0, cut);
+  if (!NAME_OK.test(who) || (cut >= 0 && !REALM_OK.test(name.slice(cut + 1)))) return null;
   const vRaw = params.get("v");
   const v = vRaw === null ? "journey" : vRaw;
   if (!VIEWS.includes(v)) return null;

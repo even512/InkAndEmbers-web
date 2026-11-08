@@ -26,11 +26,12 @@ describe("parseLinkFragment", () => {
     expect(parseLinkFragment("#c=Mirela-Der%20Rat%20von%20Dalaran")).toEqual({ c: "Mirela-Der Rat von Dalaran", v: "journey" });
     expect(parseLinkFragment("#c=Mirela-Kul%20Tiras&v=journey")?.c).toBe("Mirela-Kul Tiras");
     expect(parseLinkFragment("#c=Mirela-Drak'thul&v=journey")?.c).toBe("Mirela-Drak'thul");
+    expect(parseLinkFragment("#c=Mirela-Realm%2010%20RP&v=journey")).toEqual({ c: "Mirela-Realm 10 RP", v: "journey" });
   });
 
   it("weist Ungültiges ab: leer, zu lang, fremde Zeichen, unbekannte Ansicht, kein c", () => {
     for (const h of ["", "#", "#v=journey", "#c=&v=journey", "#c=Mirela-Realm&v=map", "#c=Mirela-Realm&v=", "#c=" + "a".repeat(81) + "&v=journey",
-      "#c=Mirela_Realm", "#c=Mirela%2FRealm", "#c=Mirela-Realm1", "#c=Mirela%0A-Realm", "#c=Mirela%00", "#c=Mirela%3B-Realm"]) {
+      "#c=Mirela_Realm", "#c=Mirela%2FRealm", "#c=Mirela1-Realm", "#c=Mir3la", "#c=Mirela-Realm_1", "#c=Mirela-Realm%2F1","#c=Mirela%0A-Realm", "#c=Mirela%00", "#c=Mirela%3B-Realm"]) {
       expect(parseLinkFragment(h), h).toBeNull();
     }
     expect(parseLinkFragment(undefined)).toBeNull();
@@ -51,12 +52,15 @@ describe("matchLinkCharacter", () => {
     { guid: "g1", name: "Mirela", realm: "Kul Tiras" },
     { guid: "g2", name: "Zoë", realm: "Azjol-Nerub" },
     { guid: "g3", name: "Mirela", realm: "Der Rat von Dalaran" },
+    { guid: "g4", name: "Mirela", realm: "Realm 10 RP" },
   ];
   it("ordnet Groß/Klein-tolerant zu und kommt mit und ohne Leerzeichen im Realm klar", () => {
     expect(matchLinkCharacter(chars, "Mirela-Kul Tiras")).toBe("g1");
     expect(matchLinkCharacter(chars, "mirela-kultiras")).toBe("g1");
     expect(matchLinkCharacter(chars, "MIRELA-DERRATVONDALARAN")).toBe("g3");
     expect(matchLinkCharacter(chars, "Zoë-Azjol-Nerub")).toBe("g2");
+    expect(matchLinkCharacter(chars, "Mirela-Realm 10 RP")).toBe("g4");
+    expect(matchLinkCharacter(chars, "mirela-realm10rp")).toBe("g4");
     expect(matchLinkCharacter(chars, "zoë-azjolnerub")).toBe("g2");
   });
   it("liefert null ohne Treffer", () => {

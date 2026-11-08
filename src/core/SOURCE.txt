@@ -1,5 +1,5 @@
 Quelle: EveN_ForeverChronicle, Ordner tools/journal-export/src
-Commit: 7dd8f2577c9e2eb6d69711a4f7f374600d28603f
+Commit: e63c4e42b7447fbadf9b9c44cb21dcc5129b99c6
 Ungesicherte Änderungen in der Quelle: nein
 Dateien: lua-parse.mjs, journal-model.mjs, i18n.mjs, render.mjs, style.css
-Stand: 2026-11-08T19:39:53.962Z
+Stand: 2026-11-08T20:17:35.710Z

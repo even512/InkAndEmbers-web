@@ -93,7 +93,8 @@ function str(v) {
 
 function entry(tbl, key) {
   if (!isTable(tbl) || key === null || key === undefined || key === "") return undefined;
-  return tbl[String(key)];
+  const k = String(key);
+  return Object.hasOwn(tbl, k) ? tbl[k] : undefined; // own keys only: file data like "constructor" must not hit the prototype
 }
 
 function nameOf(tbl, key) {
@@ -140,7 +141,8 @@ export function parseLog(char) {
 
 // field value of an event by name ("" or missing -> null); numeric fields via fnum
 export function field(ev, name) {
-  const names = FIELDS[ev.code];
+  // own keys only: a log code like "constructor" / "__proto__" is no known code (Object.prototype hit)
+  const names = Object.hasOwn(FIELDS, ev.code) ? FIELDS[ev.code] : null;
   if (!names) return null;
   const i = names.indexOf(name);
   if (i < 0) return null;
@@ -157,7 +159,7 @@ export function fnum(ev, name) {
 
 function ownLevel(ev) {
   if (ev.code === "KI") return fnum(ev, "plevel");
-  return OWN_LEVEL[ev.code] ? fnum(ev, "level") : null;
+  return Object.hasOwn(OWN_LEVEL, ev.code) ? fnum(ev, "level") : null;
 }
 
 export function listCharacters(db) {
@@ -350,7 +352,7 @@ export function buildJournal(db, guid) {
         break;
       case "LT": {
         const q = fnum(ev, "quality") ?? itemQuality(field(ev, "item"));
-        if (q !== null && stats.finds[q] !== undefined) stats.finds[q] += fnum(ev, "count") || 1;
+        if (q !== null && Object.hasOwn(stats.finds, q)) stats.finds[q] += fnum(ev, "count") || 1;
         if (q !== null && q >= 3) {
           addHighlight({ kind: "find", t: ev.t, ev, item: itemName(field(ev, "item")), itemID: itemIdOf(field(ev, "item")), quality: q, level: l });
         }
@@ -400,7 +402,7 @@ export function buildJournal(db, guid) {
           addHighlight({ kind: "boss", t: ev.t, ev, name: encounterName(value), instance: null, level: l });
           break;
         }
-        if (!FIRST_KINDS[kind]) break;
+        if (!Object.hasOwn(FIRST_KINDS, kind)) break;
         const h = { kind: "moment", moment: kind, t: ev.t, ev, level: l, name: null, detail, place: field(ev, "sub") || mapName(field(ev, "mapID")) };
         if (kind === "first_rare" || kind === "first_elite" || kind === "first_boss" || kind === "kill") h.name = npcName(value);
         else if (kind === "first_dungeon" || kind === "first_raid") h.name = instanceName(value);

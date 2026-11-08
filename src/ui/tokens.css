@@ -81,7 +81,7 @@
   --ease: cubic-bezier(.2, 0, 0, 1);
 }
 
-@media (prefers-color-scheme: dark) {
+@media screen and (prefers-color-scheme: dark) { /* nur Bildschirm: Druck und PDF bleiben immer hell */
   :root {
     --c-paper: #1F150E;
     --c-ink: #EFE3CB;

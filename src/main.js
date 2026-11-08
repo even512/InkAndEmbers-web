@@ -6,6 +6,7 @@ import "./ui/base.css";
 import "./ui/app.css";
 import "./ui/journey.css";
 import "./chronik/chronik.css";
+import "./ui/print.css";
 import { startApp } from "./ui/app.mjs";
 
 startApp(document, window);

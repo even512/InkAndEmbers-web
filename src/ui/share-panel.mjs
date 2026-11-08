@@ -35,7 +35,7 @@ export function shareData({ data, char, lang, anonymize, prepareJourney }) {
 }
 
 // Kartenbild laden (nur wenn die Karte laut Index Kunst hat); fehlt es, zeichnet der Renderer den Pergament-Rückfall
-function loadImage(win, urls) {
+export function loadImage(win, urls) {
   return new Promise((resolve) => {
     if (typeof win.Image !== "function" || !urls.length) return resolve(null);
     const attempt = (i) => {
@@ -50,7 +50,7 @@ function loadImage(win, urls) {
   });
 }
 
-async function loadFonts(doc) {
+export async function loadFonts(doc) {
   if (!doc.fonts || typeof doc.fonts.load !== "function") return;
   try {
     await Promise.all(["600 32px Spectral", "18px Spectral", "600 17px Spectral", "600 14px Spectral"].map((f) => doc.fonts.load(f)));
@@ -62,7 +62,7 @@ async function loadFonts(doc) {
 // Addon-Symbole der Karte für Video/GIF/Bild (feste Dateien aus public/img/, wie die Marker der Seite)
 export const SHARE_ICONS = Object.freeze({ level: "map-level", milestone: "map-milestone", death: "map-death", boss: "map-boss", rare: "map-rare", discovery: "map-photo", current: "map-current" });
 
-async function loadIcons(win) {
+export async function loadIcons(win) {
   const out = new Map();
   await Promise.all(Object.entries(SHARE_ICONS).map(async ([kind, name]) => {
     const img = await loadImage(win, ["img/" + name + ".webp"]);

@@ -2,14 +2,14 @@
 
 Eine statische Webseite zum Addon **Ink & Embers** (World of Warcraft Forever, rudimentär auch Retail): Die Datei
 `InkAndEmbers.lua` (SavedVariables) wird in die Seite gezogen, und das Reisetagebuch erscheint, mit Karte, Route, Chronik und
-Statistik; später zum Drucken und zum Teilen als Video, GIF oder Bild. **Alles läuft im Browser, nichts wird hochgeladen.**
+Statistik, zum Drucken (PDF) und zum Teilen als Video, GIF oder Bild. **Alles läuft im Browser, nichts wird hochgeladen.**
 Die Seite hat keine Werbung, keine Spendenlinks und kein Tracking.
 
 Fanprojekt, nicht mit Blizzard Entertainment verbunden. World of Warcraft und Kartenkunst © Blizzard Entertainment.
 
-> Stand: Etappe W2 (Trail & Geo). Datei laden, Charakter wählen, Sprache umschalten; Positionsspur und Kartenlage sind als
-> Datenschicht da (noch ohne Anzeige). Karte (W4),
-> Chronik und Statistik (W5) und Teilen (W6) folgen. Der Plan steht in der Spec `inkandembers-web` der Projekt-Werkstatt.
+> Stand: Etappe W7 (Druck, Feinschliff, Tests). Reise mit Karte und Wiedergabe, Chronik & Statistik, Teilen (Video/GIF/Bild),
+> Drucken / PDF und die Seite „Lizenzen & Hinweise“ sind da; es fehlen Laufzeit-Gate und Veröffentlichung auf GitHub Pages.
+> Der Plan steht in der Spec `inkandembers-web` der Projekt-Werkstatt.
 
 ## Bedienung
 
@@ -19,6 +19,10 @@ Fanprojekt, nicht mit Blizzard Entertainment verbunden. World of Warcraft und Ka
    nehmen, dann ist alles gesichert.
 3. Der zuletzt gespielte Charakter wird gezeigt; oben im Auswahlfeld lässt sich ein anderer wählen.
 4. Oben rechts zwischen **DE** und **EN** umschalten (ohne Wahl gilt die Sprache der Datei, sonst die des Browsers).
+5. **Drucken / PDF** (im Charakter-Kopf): baut ein Druckbuch (A4, jedes Kapitel auf einer neuen Seite, Karten als Standbild
+   der Kapitelroute, keine Bedienelemente) und öffnet den Druckdialog; dort „Als PDF speichern“ wählen. Mit
+   **Andere Spieler ausblenden** stehen statt fremder Namen „Gefährte 1, 2, …“ im Druck.
+6. **Lizenzen & Hinweise** (Fußzeile): Datenschutz, Blizzard-Hinweis, Grafiken, Bibliotheken und Schriften mit Lizenztext.
 
 Grenzen beim Laden: nur Dateien mit der Endung `.lua`, höchstens 50 MB, nur Text; Ordner und mehrere Dateien werden mit
 einem verständlichen Hinweis abgewiesen bzw. nur die erste `.lua`-Datei wird gelesen.

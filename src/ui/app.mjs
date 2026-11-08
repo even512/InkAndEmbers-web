@@ -12,6 +12,8 @@ import { pickDroppedFile, hasFiles } from "./drop.mjs";
 import { createJourneyView } from "./journey.mjs";
 import { renderChroniclePanel } from "../chronik/index.mjs";
 import { icon, portraitImg, classSpan } from "./identity.mjs";
+import { buildPrintBook } from "./print.mjs";
+import { renderLicenses } from "./licenses.mjs";
 
 const LANG_KEY = "iae-lang";
 const VIEWS = [["journey", "tabJourney", "tab-reise"], ["chronicle", "tabChronicle", "tab-chronik"]];
@@ -45,7 +47,14 @@ export function startApp(doc, win) {
     error: null, // { key, args }
     notice: null, // { key, args }
     busy: false,
+    page: "main", // main | licenses
+    printAnon: false, // „Andere Spieler ausblenden“ für den Druck (Standard aus)
+    printing: false,
+    printMsg: null, // printPreparing | printReady | printFailed
   };
+  let printToken = 0;
+  let printRoot = null; // Druckbuch (eigener Knoten neben #app, nur im Druck sichtbar)
+  let printUrls = [];
   let loadToken = 0;
   let journey = null; // { guid, db, view } Reise-Ansicht des gewählten Charakters (bleibt über render() erhalten)
   let focusTab = false; // nach Pfeiltaste: Fokus auf den neuen Reiter setzen
@@ -64,7 +73,63 @@ export function startApp(doc, win) {
     picker.value = "";
   });
 
+  function clearPrintBook() {
+    ++printToken;
+    if (printRoot && printRoot.parentNode) printRoot.parentNode.removeChild(printRoot);
+    printRoot = null;
+    if (win.URL && typeof win.URL.revokeObjectURL === "function") for (const u of printUrls) win.URL.revokeObjectURL(u);
+    printUrls = [];
+    if (doc.body.classList) doc.body.classList.remove("has-print-book");
+  }
+  win.addEventListener("afterprint", () => {
+    if (!state.printing) clearPrintBook();
+  });
+
+  // Druckbuch bauen, neben #app hängen, Bilder dekodieren lassen, dann den Druckdialog öffnen
+  async function startPrint() {
+    if (state.printing || !state.journal || !state.file) return;
+    clearPrintBook();
+    const token = printToken;
+    state.printing = true;
+    state.printMsg = "printPreparing";
+    render();
+    try {
+      const c = currentCharacter();
+      const res = await buildPrintBook(doc, win, {
+        db: state.file.db, guid: state.guid, journal: state.journal, char: state.file.db.chars[state.guid],
+        lang: state.lang, anonymize: state.printAnon, info: c ? charInfo(c) : {},
+      });
+      if (token !== printToken) {
+        if (win.URL && typeof win.URL.revokeObjectURL === "function") for (const u of res.urls) win.URL.revokeObjectURL(u);
+        return;
+      }
+      printUrls = res.urls;
+      printRoot = el(doc, "div", "print-root", res.element);
+      printRoot.setAttribute("id", "print-root");
+      doc.body.appendChild(printRoot);
+      if (doc.body.classList) doc.body.classList.add("has-print-book");
+      const imgs = [];
+      const collect = (n) => {
+        if (n && n.tagName === "IMG" && typeof n.decode === "function") imgs.push(n.decode().catch(() => {}));
+        if (n && n.childNodes) for (const k of n.childNodes) collect(k);
+      };
+      collect(printRoot);
+      await Promise.all(imgs);
+      state.printMsg = "printReady";
+      state.printing = false;
+      render();
+      if (typeof win.print === "function") win.print();
+    } catch {
+      state.printMsg = "printFailed"; // keine Dateiinhalte, kein Stacktrace
+    } finally {
+      state.printing = false;
+    }
+    render();
+  }
+
   function selectCharacter(guid) {
+    clearPrintBook();
+    state.printMsg = null;
     state.guid = guid || null;
     state.journal = null;
     if (!state.guid || !state.file) return;
@@ -79,6 +144,7 @@ export function startApp(doc, win) {
 
   async function loadFile(file, extra) {
     const token = ++loadToken;
+    state.page = "main";
     state.error = null;
     state.notice = extra && extra.count > 1 ? { key: "fileCount", args: [extra.count, safeText(file && file.name, 80)] } : null;
     state.busy = true;
@@ -277,6 +343,28 @@ export function startApp(doc, win) {
     return el(doc, "div", "field hero-field", label, sel);
   }
 
+  // Drucken / PDF mit eigenem Schalter „Andere Spieler ausblenden“
+  function printTools() {
+    const box = doc.createElement("input");
+    box.type = "checkbox";
+    box.className = "print-anon";
+    box.checked = state.printAnon;
+    box.addEventListener("change", () => {
+      state.printAnon = Boolean(box.checked);
+      clearPrintBook();
+    });
+    const btn = button("btn print-btn", t(state.lang, "printBtn"), () => startPrint());
+    btn.disabled = state.printing;
+    const status = el(doc, "p", "print-status", state.printMsg ? t(state.lang, state.printMsg) : "");
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    return el(doc, "div", "print-tools no-print",
+      el(doc, "label", "print-anon-label", box, el(doc, "span", null, t(state.lang, "printAnon"))),
+      btn,
+      status,
+    );
+  }
+
   function hero() {
     const c = currentCharacter();
     if (!c) return null;
@@ -287,6 +375,7 @@ export function startApp(doc, win) {
         el(doc, "p", "hero-meta", metaLine(c)),
       ),
       charSelect(),
+      printTools(),
     );
   }
 
@@ -350,11 +439,26 @@ export function startApp(doc, win) {
     return el(doc, "div", "journal-shell wrap", hero(), tabs(), panel);
   }
 
+  function showPage(page) {
+    if (state.page === page) return;
+    if (journey && page !== "main") journey.view.pause();
+    state.page = page;
+    render();
+    if (page === "main" && journey && state.view === "journey") journey.view.shown();
+    const target = doc.getElementById ? doc.getElementById(page === "licenses" ? "lic-title" : "app") : null;
+    if (target && typeof target.focus === "function") {
+      if (page === "licenses" && typeof target.setAttribute === "function") target.setAttribute("tabindex", "-1");
+      target.focus();
+    }
+    if (typeof win.scrollTo === "function") win.scrollTo(0, 0);
+  }
+
   function footer() {
     return el(doc, "footer", "site-footer no-print",
       el(doc, "div", "wrap",
         el(doc, "p", "footer-main", t(state.lang, "footer")),
         el(doc, "p", "footer-privacy", t(state.lang, "footerPrivacy")),
+        el(doc, "p", "footer-links", button("link-btn licenses-link", t(state.lang, "licensesLink"), () => showPage("licenses"))),
       ),
     );
   }
@@ -370,7 +474,8 @@ export function startApp(doc, win) {
     if (state.file && state.file.schemaWarning) msgs.appendChild(alertBox("notice", { key: "schemaWarn", args: [state.file.schemaWarning] }));
     if (state.busy) msgs.appendChild(alertBox("notice", { key: "reading", args: [] }));
     if (msgs.childNodes.length) main.appendChild(msgs);
-    if (!state.file) main.appendChild(dropZone());
+    if (state.page === "licenses") main.appendChild(renderLicenses(doc, state.lang, () => showPage("main")));
+    else if (!state.file) main.appendChild(dropZone());
     else if (!state.journal) main.appendChild(charChooser());
     else main.appendChild(journalShell());
     const nodes = [toolbar(), main, footer()];
@@ -384,5 +489,5 @@ export function startApp(doc, win) {
   }
 
   render();
-  return { state, render, loadFile };
+  return { state, render, loadFile, startPrint, showPage };
 }

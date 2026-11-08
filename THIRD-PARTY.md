@@ -13,11 +13,10 @@ Die Seite lädt zur Laufzeit nichts von außen: alles unten Genannte wird mit de
 | gifenc 1.0.3 (Matt DesLauriers) – GIF-Encoder | MIT | im GIF-Worker `assets/gif.worker-*.js`, unverändert aus npm `gifenc`; Text: `public/licenses/MIT-gifenc.txt` | |
 | Parser, Modell, Texte, Darstellung | MIT (eigener Code) | `src/core/` | Kopie aus `EveN_ForeverChronicle/tools/journal-export/src/`, siehe `src/core/SOURCE.txt` |
 
-Vorgesehen für spätere Etappen (noch nicht eingebunden):
+| Kartentabellen (UiMap, UiMapAssignment, UiMapXMapArt, UiMapArt, UiMapArtTile) von wago.tools | Auszüge der Client-Tabellen, Spielwelt-Inhalte © Blizzard Entertainment | `src/geo/index.json` (gebaut mit `scripts/build-map-index.mjs`) | Namen mit derselben Strip-Liste wie die Seite gesäubert |
 
-| Bestandteil | Lizenz | Etappe |
-|---|---|---|
-| Kartentabellen (UiMap, UiMapAssignment, UiMapXMapArt, UiMapArt, UiMapArtTile) von wago.tools, als `src/geo/index.json` | Auszüge der Client-Tabellen, Spielwelt-Inhalte © Blizzard Entertainment | W2 |
+Die Seite „Lizenzen & Hinweise“ (Fußzeile) nennt dieselben Bestandteile für Besucher, die Lizenztexte liegen unter
+`licenses/` bzw. `fonts/` der ausgelieferten Seite.
 
 ## Nur zur Entwicklung (nicht Teil der ausgelieferten Seite)
 

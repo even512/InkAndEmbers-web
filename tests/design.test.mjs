@@ -145,7 +145,7 @@ describe("Volks-Porträt und Klassenfarbe", () => {
 
   it("die Klassenfarben erreichen auf hellem und dunklem Papier mindestens 4.5:1", () => {
     const css = readFileSync(join(ROOT, "src", "ui", "tokens.css"), "utf8");
-    const dark = css.indexOf("@media (prefers-color-scheme: dark)");
+    const dark = css.indexOf("prefers-color-scheme: dark");
     const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
     const lum = (h) => {
       const [r, g, b] = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);

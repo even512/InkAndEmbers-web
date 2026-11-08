@@ -1,0 +1,67 @@
+/* Drucken / PDF und Seite „Lizenzen & Hinweise“.
+   Bildschirm: Druckknopf mit Schalter im Charakter-Kopf, das Druckbuch (#print-root) bleibt unsichtbar.
+   Druck: Ist ein Druckbuch vorbereitet (body.has-print-book), wird nur es gedruckt: A4, jedes Kapitel auf einer neuen Seite,
+   keine Bedienelemente, Karten als Standbild. Ohne Druckbuch (Strg+P) greifen die Druckregeln der Ansichten (base.css). */
+
+/* ---- Druckknopf im Charakter-Kopf ------------------------------------------------------------------------- */
+.print-tools {
+  grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s-2) var(--s-4);
+}
+.print-anon-label { display: inline-flex; align-items: center; gap: var(--s-2); min-height: var(--touch); cursor: pointer; }
+.print-status { flex-basis: 100%; text-align: right; font-size: var(--fs-sm); color: var(--c-ink-muted); }
+.print-status:empty { display: none; }
+.print-root { display: none; }
+
+/* Link-Knopf in der Fußzeile */
+.link-btn {
+  display: inline-flex; align-items: center; min-height: var(--touch); padding: 0;
+  font: inherit; color: var(--c-ink); background: none; border: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--c-line);
+}
+.link-btn:hover { text-decoration-color: var(--c-ink); }
+
+/* ---- Lizenzen & Hinweise -------------------------------------------------------------------------------- */
+.licenses { padding-top: var(--s-6); padding-bottom: var(--s-7); max-width: 820px; }
+.lic-head { margin-bottom: var(--s-5); }
+.lic-title { font-size: var(--fs-xl); }
+.lic-title:focus { outline: none; }
+.lic-lead { margin-top: var(--s-2); color: var(--c-ink-muted); font-size: var(--fs-md); max-width: 62ch; }
+.lic-block { margin-top: var(--s-6); padding-top: var(--s-5); border-top: var(--border) solid var(--c-rule); }
+.lic-h { font-size: var(--fs-lg); margin-bottom: var(--s-3); }
+.lic-p { max-width: 72ch; }
+.lic-p + .lic-p, .lic-libs + .lic-p { margin-top: var(--s-3); }
+.lic-libs { margin: var(--s-4) 0 0; padding: 0; list-style: none; display: grid; gap: var(--s-4); }
+.lic-lib { padding-left: var(--s-3); border-left: 2px solid var(--c-bronze); }
+.lic-file { margin-top: var(--s-1); font-size: var(--fs-sm); color: var(--c-ink-muted); overflow-wrap: anywhere; }
+
+/* ---- Druckbuch ------------------------------------------------------------------------------------------ */
+@page { size: A4; margin: 14mm 14mm 16mm; }
+
+@media print {
+  body.has-print-book #app { display: none !important; }
+  body.has-print-book .print-root { display: block !important; }
+  .print-book { font-size: 10.5pt; line-height: 1.45; color: #2B2118; }
+  .print-book img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .print-book .page { padding: 0; border-top: 0; }
+  .print-page { break-before: page; page-break-before: always; }
+  .print-page:first-child { break-before: auto; page-break-before: auto; }
+  .print-book .chapter-head, .print-book .page-title { break-after: avoid; page-break-after: avoid; }
+  .print-book .moment, .print-book .note, .print-book .stat, .print-book .facts, .print-book .places,
+  .print-book .medal-card, .print-book .death-row, .print-book .dg-run { break-inside: avoid; page-break-inside: avoid; }
+
+  .print-title { display: flex; flex-direction: column; gap: 6mm; }
+  .print-eyebrow { font-size: 11pt; letter-spacing: 0.08em; text-transform: uppercase; color: #6B5034; }
+  .print-who { display: flex; align-items: center; gap: 6mm; }
+  .print-portrait { width: 26mm; height: 26mm; border-radius: 50%; border: 0.6mm solid #7A5320; flex: none; }
+  .print-name { font-size: 28pt; line-height: 1.1; overflow-wrap: anywhere; }
+  .print-meta { margin-top: 1.5mm; font-size: 12pt; }
+  .print-span { margin-top: 1mm; color: #6B5034; }
+  .print-anon-note { font-size: 9.5pt; color: #6B5034; border-left: 0.8mm solid #7A5320; padding-left: 3mm; }
+
+  .print-map { margin: 4mm 0 5mm; break-inside: avoid; page-break-inside: avoid; }
+  .print-map-img { display: block; width: 100%; height: auto; border: 0.3mm solid #8C6A42; }
+  .print-map-cap { margin-top: 1.5mm; font-size: 9pt; color: #6B5034; }
+
+  .print-colophon { margin-top: 10mm; padding-top: 3mm; border-top: 0.3mm solid #CDB586; font-size: 9pt; color: #6B5034; break-inside: avoid; }
+  .print-colophon p + p { margin-top: 1mm; }
+}

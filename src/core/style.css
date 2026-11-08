@@ -364,3 +364,6 @@ body.dragging::after {
   .colophon { color: var(--ink-soft); padding: 10mm 0 0; break-before: avoid; }
   a { color: inherit; text-decoration: none; }
 }
+
+/* text from the file: its bidi direction stays inside its element (clean() already removes overrides and isolates) */
+.book :is(p, li, dt, dd, span, strong, h1, h2, h3, h4), .char-card span, .file-name { unicode-bidi: isolate; }

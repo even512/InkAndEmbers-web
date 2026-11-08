@@ -7,7 +7,8 @@ Die Seite hat keine Werbung, keine Spendenlinks und kein Tracking.
 
 Fanprojekt, nicht mit Blizzard Entertainment verbunden. World of Warcraft und Kartenkunst © Blizzard Entertainment.
 
-> Stand: Etappe W1 (Gerüst). Datei laden, Charakter wählen, Sprache umschalten und die leere Grundansicht gibt es. Karte (W4),
+> Stand: Etappe W2 (Trail & Geo). Datei laden, Charakter wählen, Sprache umschalten; Positionsspur und Kartenlage sind als
+> Datenschicht da (noch ohne Anzeige). Karte (W4),
 > Chronik und Statistik (W5) und Teilen (W6) folgen. Der Plan steht in der Spec `inkandembers-web` der Projekt-Werkstatt.
 
 ## Bedienung
@@ -34,6 +35,7 @@ npm run preview      # dist/ lokal ansehen, so wie es später auf GitHub Pages l
 npm test             # Tests (Vitest): Laden, Limits, XSS-Fixture, Quelltext-Regeln
 npm run sync-core    # src/core/ aus dem Addon-Repo erneuern
 npm run check-core   # prüfen, ob src/core/ noch dem Addon-Repo entspricht (Exit 1 bei Abweichung)
+npm run build-map-index   # src/geo/index.json aus scripts/data/wago-<build>/ neu bauen (--fetch lädt von wago.tools)
 ```
 
 ### Aufbau
@@ -42,9 +44,12 @@ npm run check-core   # prüfen, ob src/core/ noch dem Addon-Repo entspricht (Exi
 index.html          Grundgerüst mit Meta-CSP (kein Inline-Skript, kein Inline-Stil)
 src/main.js         Einstieg
 src/core/           Kopie aus EveN_ForeverChronicle/tools/journal-export/src/ (nicht von Hand ändern!)
+src/trail/          parse-trail.mjs: Positionsspur prüfen, in Strecken zerlegen, Wiedergabe-Zeitachse
+src/geo/            map-geo.mjs (Zone <-> Kontinent, Anzeigekarte), index.json (generiert)
 src/ui/             Seite: app.mjs, load-file.mjs (Limits), drop.mjs, texts.mjs (DE/EN), safe-text.mjs, CSS
 public/fonts/       Spectral und Caveat (SIL OFL)
-scripts/            sync-core.mjs (später: build-map-index.mjs, extract-maps.mjs)
+scripts/            sync-core.mjs, build-map-index.mjs (später: extract-maps.mjs)
+scripts/data/       wago.tools-Schnappschüsse der Kartentabellen je Build
 tests/              Vitest + synthetische Fixtures (keine echten Spielerdaten)
 .github/workflows/  pages.yml (Deploy auf GitHub Pages)
 ```

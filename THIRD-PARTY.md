@@ -17,6 +17,7 @@ Vorgesehen für spätere Etappen (noch nicht eingebunden):
 | Mediabunny (MP4 über WebCodecs) | MPL-2.0 (unverändert einbinden, Lizenztext ausliefern) | W6 |
 | gifenc (GIF-Encoder) | MIT | W6 |
 | Blizzard-Kartenkunst | © Blizzard Entertainment, nicht-kommerzielle Fan-Nutzung | W3 |
+| Kartentabellen (UiMap, UiMapAssignment, UiMapXMapArt, UiMapArt, UiMapArtTile) von wago.tools, als `src/geo/index.json` | Auszüge der Client-Tabellen, Spielwelt-Inhalte © Blizzard Entertainment | W2 |
 
 ## Nur zur Entwicklung (nicht Teil der ausgelieferten Seite)
 

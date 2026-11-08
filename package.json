@@ -14,7 +14,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "sync-core": "node scripts/sync-core.mjs",
-    "check-core": "node scripts/sync-core.mjs --check"
+    "check-core": "node scripts/sync-core.mjs --check",
+    "build-map-index": "node scripts/build-map-index.mjs",
+    "check-map-index": "node scripts/build-map-index.mjs --check"
   },
   "devDependencies": {
     "vite": "^8.3.6",

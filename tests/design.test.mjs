@@ -160,11 +160,21 @@ describe("Volks-Porträt und Klassenfarbe", () => {
 });
 
 describe("Reise im neuen Design", () => {
-  it("Kapitelnamen in der Sprache der Seite (Addon-Tabelle), nicht die englischen Indexnamen", () => {
+  it("Kapitelnamen in der Sprache der Seite (Forever-Client-Namen), nicht die englischen Indexnamen", () => {
     expect(zoneName(1429, "de")).toBe("Wald von Elwynn");
     expect(zoneName(1429, "en")).toBe("Elwynn Forest");
     expect(zoneName(999999, "de")).toBeNull();
     expect(zoneName("1429", "de")).toBeNull();
+    // Forever-Client (Kartenmaterial 2004/2005): Städte sind Eigennamen und heißen auch auf Deutsch englisch, andere Zonen deutsch
+    for (const [id, de, en] of [[1455, "Ironforge", "Ironforge"], [1453, "Stormwind", "Stormwind City"], [1456, "Thunder Bluff", "Thunder Bluff"],
+      [1458, "Undercity", "Undercity"], [1454, "Orgrimmar", "Orgrimmar"], [1457, "Darnassus", "Darnassus"], [1431, "Dämmerwald", "Duskwood"],
+      [1436, "Westfall", "Westfall"], [1440, "Ashenvale", "Ashenvale"], [1445, "Marschen von Dustwallow", "Dustwallow Marsh"]]) {
+      expect(zoneName(id, "de"), String(id)).toBe(de);
+      expect(zoneName(id, "en"), String(id)).toBe(en);
+    }
+    // keine Retail-Übersetzung an Forever-IDs (ab 1400); nur Retail-ID 87 behält Eisenschmiede
+    expect(Object.entries(ZONE_NAMES).filter(([id]) => Number(id) >= 1400).flatMap(([, p]) => p)).not.toContain("Eisenschmiede");
+    expect(zoneName(87, "de")).toBe("Eisenschmiede");
     expect(placeName("de", 999999, "Fallback")).toBe("Fallback");
     expect(Object.keys(ZONE_NAMES).length).toBeGreaterThan(90);
     const { journal, char } = load(TRAIL);

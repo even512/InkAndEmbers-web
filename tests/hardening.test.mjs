@@ -12,7 +12,7 @@ import { createLru } from "../src/ui/lru.mjs";
 import { itemKey, itemQuality } from "../src/chronik/log.mjs";
 import { touches } from "../src/chronik/dungeons.mjs";
 import { segmentTrail, parseTrail } from "../src/trail/parse-trail.mjs";
-import { cleanName, fetchTables, readLimited, TABLES, dataDir, readTables, DEFAULT_BUILD } from "../scripts/build-map-index.mjs";
+import { cleanName, fetchTables, readLimited, TABLES, NAME_TABLES, dataDir, readTables, DEFAULT_BUILD } from "../scripts/build-map-index.mjs";
 import { model, thanenOpts } from "./helpers/chronik-sv.mjs";
 import { rng } from "./helpers/trail-gen.mjs";
 import { createAnonymizer, anonymizeChar, collectForeignNames } from "../src/share/anonymize.mjs";
@@ -187,6 +187,13 @@ describe("Spur: Unterbrechungsgründe nur aus der eigenen Liste", () => {
 
 describe("build-map-index: Namen säubern, Abruf mit Zeitlimit und Größenbremse", () => {
   const csv = readTables(dataDir(DEFAULT_BUILD));
+  // Tabelle zur URL: UiMap mit ?locale=... liefert den Sprachauszug (UiMap.deDE / UiMap.enUS)
+  const tableOf = (url) => {
+    const u = new URL(String(url));
+    const t = /\/db2\/([A-Za-z]+)\/csv/.exec(u.pathname)[1];
+    const l = u.searchParams.get("locale");
+    return l ? t + "." + l : t;
+  };
   const okResponse = (text, headers = {}) => ({ ok: true, status: 200, headers: { get: (k) => headers[k] ?? null }, body: null, text: async () => text });
 
   it("cleanName nutzt die Strip-Liste der Seite", () => {
@@ -202,18 +209,18 @@ describe("build-map-index: Namen säubern, Abruf mit Zeitlimit und Größenbrems
       seen.push(String(url));
       expect(opts.redirect).toBe("error");
       expect(opts.signal).toBeTruthy();
-      const name = /\/db2\/([A-Za-z]+)\/csv/.exec(String(url))[1];
-      return okResponse(csv[name]);
+      return okResponse(csv[tableOf(url)]);
     };
     await fetchTables(DEFAULT_BUILD, dir, { fetchImpl });
     expect(seen.every((u) => u.startsWith("https://wago.tools/db2/"))).toBe(true);
-    expect(readdirSync(dir).sort()).toEqual(TABLES.map((t) => t + ".csv").sort());
+    expect(readdirSync(dir).sort()).toEqual([...TABLES, ...NAME_TABLES].map((t) => t + ".csv").sort());
+    expect(seen.some((u) => u.includes("locale=deDE")) && seen.some((u) => u.includes("locale=enUS"))).toBe(true);
   });
 
   it("schreibt nichts, wenn eine Tabelle nicht passt, zu groß ist oder das Zeitlimit greift", async () => {
     const base = mkdtempSync(join(tmpdir(), "iae-wago-"));
     const bad = join(base, "bad");
-    await expect(fetchTables(DEFAULT_BUILD, bad, { fetchImpl: async (url) => okResponse(String(url).includes("UiMapArtTile") ? "ID,Foo\n1,2\n" : csv[/\/db2\/([A-Za-z]+)\//.exec(String(url))[1]]) })).rejects.toThrow(/UiMapArtTile/);
+    await expect(fetchTables(DEFAULT_BUILD, bad, { fetchImpl: async (url) => okResponse(String(url).includes("UiMapArtTile") ? "ID,Foo\n1,2\n" : csv[tableOf(url)]) })).rejects.toThrow(/UiMapArtTile/);
     expect(existsSync(bad)).toBe(false);
     const big = join(base, "big");
     await expect(fetchTables(DEFAULT_BUILD, big, { fetchImpl: async () => okResponse("x", { "content-length": String(50 * 1024 * 1024) }) })).rejects.toThrow(/zu groß/);

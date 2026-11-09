@@ -6,7 +6,10 @@
 //   node scripts/build-map-index.mjs                  liest scripts/data/wago-<build>/, schreibt src/geo/index.json
 //   node scripts/build-map-index.mjs --check          prüft nur: Exit 1, wenn index.json nicht zum Schnappschuss passt
 //   node scripts/build-map-index.mjs --build <b>      anderer Build (Ordner scripts/data/wago-<b>/)
-//   node scripts/build-map-index.mjs --fetch          lädt die fünf Tabellen vorher neu von wago.tools (nur dieser Host)
+//   node scripts/build-map-index.mjs --fetch          lädt die fünf Tabellen (und UiMap in deDE/enUS) vorher neu von wago.tools (nur dieser Host)
+//
+// Zusätzlich schreibt es src/geo/zone-names.forever.json: die Kartennamen des Forever-Clients je uiMapID als [deDE, enUS]
+// (UiMap.Name_lang aus UiMap.deDE.csv / UiMap.enUS.csv). Städte heißen dort auch auf Deutsch englisch (Ironforge, Stormwind).
 //
 // Je Eintrag in index.json (Schlüssel uiMapID):
 //   name, type (1 Welt, 2 Kontinent, 3 Zone, 4 Unterzone, 5 Mikro, 6 Schlachtfeld/Instanz), parent,
@@ -24,6 +27,9 @@ import { STRIP } from "../src/ui/safe-text.mjs";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const DEFAULT_BUILD = "1.60.1.70862";
 export const TABLES = ["UiMap", "UiMapAssignment", "UiMapXMapArt", "UiMapArt", "UiMapArtTile"];
+// UiMap je Client-Sprache (Name_lang): Dateien UiMap.<Sprache>.csv; Reihenfolge [de, en] wie ZONE_NAMES
+export const NAME_LOCALES = ["deDE", "enUS"];
+export const NAME_TABLES = NAME_LOCALES.map((l) => "UiMap." + l);
 const WAGO_HOST = "wago.tools";
 const BUILD_RE = /^\d{1,2}\.\d{1,3}\.\d{1,3}\.\d{1,7}$/;
 const MAX_CSV_BYTES = 5 * 1024 * 1024;
@@ -152,6 +158,30 @@ export function cleanName(v) {
   return String(v ?? "").replace(STRIP, "").trim().slice(0, 80);
 }
 
+// UiMap-Auszüge deDE/enUS (CSV-Text) -> { build, source, names: { uiMapID: [de, en] } }; beide Sprachen müssen dieselben IDs haben
+export function buildZoneNames(csv, build) {
+  if (!BUILD_RE.test(String(build))) throw new Error("Build ungültig: " + build);
+  const per = NAME_TABLES.map((name) => {
+    if (typeof csv[name] !== "string") throw new Error("Tabelle fehlt: " + name);
+    const m = new Map();
+    for (const r of check("UiMap", parseCsv(csv[name], name))) {
+      const id = int(r.ID, name + ".ID");
+      if (id <= 0 || id > 1e6) throw new Error(name + ".ID außerhalb: " + id);
+      m.set(id, cleanName(r.Name_lang));
+    }
+    return m;
+  });
+  const [de, en] = per;
+  if (de.size !== en.size) throw new Error("UiMap deDE/enUS haben verschieden viele Karten");
+  const names = Object.create(null);
+  for (const id of [...en.keys()].sort((a, b) => a - b)) {
+    if (!de.has(id)) throw new Error("UiMap " + id + " fehlt in " + NAME_TABLES[0]);
+    if (!de.get(id) || !en.get(id)) continue;
+    names[id] = [de.get(id), en.get(id)];
+  }
+  return { build: String(build), source: "https://" + WAGO_HOST + "/db2/UiMap/csv?build=" + build + "&locale=<deDE|enUS>", names };
+}
+
 // Tabellen (CSV-Text je Name) -> index-Objekt
 export function buildIndex(csv, build) {
   if (!BUILD_RE.test(String(build))) throw new Error("Build ungültig: " + build);
@@ -259,6 +289,11 @@ export function readTables(dir) {
     if (!existsSync(f)) throw new Error("Schnappschuss fehlt: " + f + " (mit --fetch laden)");
     csv[name] = readFileSync(f, "utf8");
   }
+  for (const name of NAME_TABLES) {
+    const f = join(dir, name + ".csv");
+    if (!existsSync(f)) throw new Error("Schnappschuss fehlt: " + f + " (mit --fetch laden)");
+    csv[name] = readFileSync(f, "utf8");
+  }
   return csv;
 }
 
@@ -296,10 +331,12 @@ export async function readLimited(res, max, name) {
 export async function fetchTables(build, dir, { fetchImpl = fetch, timeoutMs = FETCH_TIMEOUT_MS, write = true } = {}) {
   if (!BUILD_RE.test(String(build))) throw new Error("Build ungültig: " + build);
   const csv = {};
-  for (const name of TABLES) {
-    // fester Host, Tabelle aus der Whitelist, Build per Regex geprüft
-    const url = new URL("https://" + WAGO_HOST + "/db2/" + encodeURIComponent(name) + "/csv");
+  const jobs = [...TABLES.map((t) => [t, t, null]), ...NAME_LOCALES.map((l) => ["UiMap." + l, "UiMap", l])];
+  for (const [name, table, locale] of jobs) {
+    // fester Host, Tabelle aus der Whitelist, Build per Regex geprüft, Sprache aus fester Liste
+    const url = new URL("https://" + WAGO_HOST + "/db2/" + encodeURIComponent(table) + "/csv");
     url.searchParams.set("build", build);
+    if (locale) url.searchParams.set("locale", locale);
     let res;
     try {
       res = await fetchImpl(url, { redirect: "error", signal: AbortSignal.timeout(timeoutMs) });
@@ -314,9 +351,10 @@ export async function fetchTables(build, dir, { fetchImpl = fetch, timeoutMs = F
     process.stdout.write("geladen: " + name + " (" + text.length + " Zeichen)\n");
   }
   buildIndex(csv, build); // wirft, wenn eine Tabelle nicht passt – dann wird nichts überschrieben
+  buildZoneNames(csv, build);
   if (write) {
     mkdirSync(dir, { recursive: true });
-    for (const name of TABLES) writeFileSync(join(dir, name + ".csv"), csv[name]);
+    for (const name of [...TABLES, ...NAME_TABLES]) writeFileSync(join(dir, name + ".csv"), csv[name]);
   }
   return csv;
 }
@@ -337,6 +375,8 @@ async function main() {
   const index = buildIndex(readTables(dir), build);
   const text = serialize(index);
   const outFile = join(ROOT, "src", "geo", "index.json");
+  const namesFile = join(ROOT, "src", "geo", "zone-names.forever.json");
+  const namesText = serialize(buildZoneNames(readTables(dir), build));
   const maps = Object.values(index.maps);
   const summary = maps.length + " Karten, " + maps.filter((m) => m.art).length + " mit Kunst, " + maps.filter((m) => m.rect).length + " mit Kontinent-Rechteck";
   if (argv.includes("--check")) {
@@ -345,11 +385,17 @@ async function main() {
       process.stderr.write("src/geo/index.json passt nicht zum Schnappschuss " + build + " (npm run build-map-index)\n");
       process.exit(1);
     }
+    const curNames = existsSync(namesFile) ? readFileSync(namesFile, "utf8").replace(/\r\n/g, "\n") : "";
+    if (curNames !== namesText) {
+      process.stderr.write("src/geo/zone-names.forever.json passt nicht zum Schnappschuss " + build + " (npm run build-map-index)\n");
+      process.exit(1);
+    }
     process.stdout.write("index.json aktuell (" + summary + ")\n");
     return;
   }
   mkdirSync(dirname(outFile), { recursive: true });
   writeFileSync(outFile, text);
+  writeFileSync(namesFile, namesText);
   process.stdout.write("geschrieben: src/geo/index.json (Build " + build + ", " + summary + ")\n");
 }
 

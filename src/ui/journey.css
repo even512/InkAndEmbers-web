@@ -5,6 +5,15 @@
 .journey-title { overflow-wrap: anywhere; }
 .chapter-chip.current { color: var(--c-ink); }
 
+/* Akte als oberste Ebene der Leiste: Titel „Akt I · Zone“, darunter Stufe und Dauer (wie die Zettel im Addon) */
+.chapter-bar { row-gap: var(--s-1); }
+.act-chip { flex-direction: column; align-items: flex-start; justify-content: center; padding: var(--s-1) 0; line-height: 1.25; }
+.act-chip-title { color: var(--c-ink); font-weight: var(--fw-strong); }
+.act-chip-sub { font-size: var(--fs-sm); color: var(--c-ink-muted); }
+.act-chip:hover .act-chip-title, .act-chip.current .act-chip-title { color: var(--c-bronze); }
+.back-chip { color: var(--c-bronze); font-weight: var(--fw-strong); }
+.back-chip:hover { color: var(--c-ink); }
+
 .journey-body { display: grid; grid-template-columns: minmax(0, 1fr) var(--aside-w); gap: var(--s-6); margin-top: var(--s-4); }
 .journey-main { min-width: 0; }
 .journey-aside { display: grid; gap: var(--s-6); align-content: start; min-width: 0; }

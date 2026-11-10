@@ -186,9 +186,16 @@ describe("Reise im neuen Design", () => {
     expect(chips.join("|")).not.toMatch(/Elwynn Forest/);
     view.setLang("en");
     expect(byClass(view.element, "chapter-chip").map((b) => b.textContent).join("|")).toMatch(/Elwynn Forest/);
-    // Kapitel wählen: Überschrift und Kennzahlen folgen
+    // Akt wählen (oberste Ebene, Titel „Act I · …“), dann ein Kapitel darin: Überschrift und Kennzahlen folgen
+    const act = view.data.acts[0];
+    expect(byClass(view.element, "act-chip-title")[0].textContent).toBe("Act I · " + placeName("en", act.mapID, act.name));
+    byClass(view.element, "act-chip")[0].click();
+    expect(byClass(view.element, "journey-title")[0].textContent).toBe(placeName("en", act.mapID, act.name));
+    expect(byClass(view.element, "aside-title")[0].textContent).toBe("In this act");
+    expect(byClass(view.element, "back-chip")[0].textContent).toBe("← Back to the acts");
     byClass(view.element, "chapter-chip")[1].click();
-    expect(byClass(view.element, "journey-title")[0].textContent).toBe(placeName("en", view.data.chapters[0].mapID, view.data.chapters[0].name));
+    const ch = view.data.chapters[act.chapters[0]];
+    expect(byClass(view.element, "journey-title")[0].textContent).toBe(placeName("en", ch.mapID, ch.name));
     expect(byClass(view.element, "aside-title")[0].textContent).toBe("In this chapter");
     view.destroy();
   });

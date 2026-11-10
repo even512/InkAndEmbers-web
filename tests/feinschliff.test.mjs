@@ -41,21 +41,33 @@ function sample() {
 }
 
 describe("Kapitelmodus der Reise", () => {
-  it("Infozeile zeigt bei angehaltener Wiedergabe das Ende des gewählten Kapitels, nicht das der ganzen Reise", () => {
+  it("Akt/Kapitel wählen springt an den Anfang (kein Abspielen); Infozeile zeigt den Start, zurück zeigt die ganze Reise", () => {
     const s = sample();
     const env = fakeEnv({ language: "de-DE" });
     const view = createJourneyView(env.doc, env.win, { journal: s.journal, char: s.char, lang: "de" });
     const info = () => byClass(view.element, "play-info")[0].textContent;
-    const whole = info();
-    byClass(view.element, "chapter-chip")[1].click(); // Kapitel 1 endet Tage vor dem Ende der Reise
-    const first = info();
-    expect(first).not.toBe(whole);
-    expect(view.state.chapter).toBe(0);
-    const ch = view.data.chapters[0];
+    const day = (text) => Number((/(\d{1,2})\./.exec(text) || [])[1]);
     const dateOf = (t) => new Date(t * 1000).getDate();
-    const shown = /(\d{1,2})\./.exec(first);
-    expect(shown && Number(shown[1])).toBe(dateOf(ch.t1));
-    byClass(view.element, "chapter-chip")[0].click();
+    const whole = info();
+    expect(view.data.acts.length).toBeGreaterThan(0);
+    byClass(view.element, "act-chip")[0].click(); // Akt I öffnen
+    expect([view.state.act, view.state.chapter, view.state.pb.playing]).toEqual([0, -1, false]);
+    expect(view.state.pb.p).toBe(view.state.pb.p0);
+    expect(day(info())).toBe(dateOf(view.data.acts[0].t0));
+    // im Akt: zurück + seine Kapitel
+    const chips = byClass(view.element, "chapter-chip");
+    expect(chips[0].className).toContain("back-chip");
+    expect(chips.length).toBe(1 + view.data.acts[0].chapters.length);
+    const ci = view.data.acts[0].chapters[view.data.acts[0].chapters.length - 1];
+    chips[chips.length - 1].click();
+    expect([view.state.act, view.state.chapter, view.state.pb.playing]).toEqual([0, ci, false]);
+    expect(day(info())).toBe(dateOf(view.data.chapters[ci].t0));
+    expect(info()).not.toBe(whole);
+    // das gewählte Kapitel noch einmal: zurück zum Akt; dann zurück zu den Akten = ganze Reise
+    byClass(view.element, "chapter-chip")[byClass(view.element, "chapter-chip").length - 1].click();
+    expect([view.state.act, view.state.chapter]).toEqual([0, -1]);
+    byClass(view.element, "back-chip")[0].click();
+    expect([view.state.act, view.state.chapter]).toEqual([-1, -1]);
     expect(info()).toBe(whole);
     view.destroy();
   });

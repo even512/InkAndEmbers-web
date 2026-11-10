@@ -143,16 +143,33 @@ function titlePage(doc, lang, j) {
 
 function contentsPage(doc, lang, j, sections) {
   const ol = el(doc, "ol", "toc");
-  for (const c of j.chapters) {
+  const chapterRow = (c) => {
     const lv = levelRange(c);
-    ol.appendChild(
-      el(doc, "li", "toc-row",
-        el(doc, "span", "toc-num", roman(c.n)),
-        el(doc, "span", "toc-title", zoneTitle(lang, c)),
-        el(doc, "span", "toc-dots"),
-        el(doc, "span", "toc-meta", lv ? tr(lang, "levelN", lv) : ""),
-      ),
+    return el(doc, "li", "toc-row toc-chapter",
+      el(doc, "span", "toc-num", roman(c.n)),
+      el(doc, "span", "toc-title", zoneTitle(lang, c)),
+      el(doc, "span", "toc-dots"),
+      el(doc, "span", "toc-meta", lv ? tr(lang, "levelN", lv) : ""),
     );
+  };
+  const acts = Array.isArray(j.acts) && j.acts.length ? j.acts : null;
+  if (acts) {
+    // acts as the upper level (like the addon): "Akt I · Dun Morogh", level span and played time, then its chapters
+    for (const a of acts) {
+      const lv = levelSpan(a.levelFrom, a.levelTo);
+      const meta = [lv ? tr(lang, "levelN", lv) : null, a.active >= 60 ? fmtDuration(lang, a.active) : null].filter(Boolean).join(" · ");
+      ol.appendChild(
+        el(doc, "li", "toc-row toc-act",
+          el(doc, "span", "toc-num", ""),
+          el(doc, "span", "toc-title", actTitle(lang, a)),
+          el(doc, "span", "toc-dots"),
+          el(doc, "span", "toc-meta", meta),
+        ),
+      );
+      for (const i of a.chapters) if (j.chapters[i]) ol.appendChild(chapterRow(j.chapters[i]));
+    }
+  } else {
+    for (const c of j.chapters) ol.appendChild(chapterRow(c));
   }
   for (const s of sections) {
     ol.appendChild(el(doc, "li", "toc-row toc-extra", el(doc, "span", "toc-num", "✦"), el(doc, "span", "toc-title", s), el(doc, "span", "toc-dots"), el(doc, "span", "toc-meta", "")));
@@ -161,8 +178,17 @@ function contentsPage(doc, lang, j, sections) {
 }
 
 function levelRange(c) {
-  if (c.minLevel === null) return null;
-  return c.minLevel === c.maxLevel ? String(c.minLevel) : c.minLevel + "–" + c.maxLevel;
+  return levelSpan(c.minLevel, c.maxLevel);
+}
+
+function levelSpan(a, b) {
+  if (a === null || a === undefined) return null;
+  return b === null || b === undefined || a === b ? String(a) : a + "–" + b;
+}
+
+// "Akt I · Dun Morogh" (zone of the anchor chapter)
+export function actTitle(lang, a) {
+  return tr(lang, "actTitle", roman(a.n), a.zoneName ? clean(a.zoneName, 80) : tr(lang, "underway"));
 }
 
 function zoneTitle(lang, c) {
@@ -211,7 +237,7 @@ function chapterPage(doc, lang, j, c, isLast) {
     "section",
     "page chapter",
     el(doc, "header", "chapter-head",
-      el(doc, "p", "chapter-kicker", tr(lang, "chapter", roman(c.n))),
+      el(doc, "p", "chapter-kicker", Number.isInteger(c.act) ? tr(lang, "chapterInAct", roman(c.act), roman(c.n)) : tr(lang, "chapter", roman(c.n))),
       el(doc, "h2", "chapter-title", zone),
       el(doc, "p", "chapter-dates", [dates, active].filter(Boolean).join(" · ")),
     ),

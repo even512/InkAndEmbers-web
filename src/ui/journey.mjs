@@ -1,16 +1,19 @@
 // Reise-Ansicht: Karte (Canvas) mit Route und Flügen, Marker als Knöpfe mit Addon-Symbolen (public/img/map-*.webp) darüber,
-// Zoom/Pan (Maus, Rad, Touch, Tastatur), Tooltips, Kapitel als Textreiter je Zone, Umschalter Zone/Kontinent, Wiedergabe
-// 20/60/180× mit Zeitleiste und mitlaufender Stufe, Kennzahlen „In diesem Kapitel“ und das Teilen-Feld (W6) daneben.
+// Zoom/Pan (Maus, Rad, Touch, Tastatur), Tooltips, Akte als oberste Ebene der Leiste (wie im Addon: „Akt I · Dun Morogh“,
+// Stufe, Dauer; Klick zeigt die Kapitel des Akts, „Zurück zu den Akten“), Umschalter Zone/Kontinent, Wiedergabe 20/60/180×
+// mit Zeitleiste und mitlaufender Stufe, Kennzahlen „In diesem Akt/Kapitel“ und das Teilen-Feld (W6) daneben.
+// Akt/Kapitel wählen spielt nicht ab: die Karte springt an den Anfang (Zone des Starts, Zeitleiste am Anfang). Beim Abspielen
+// und Scrubben folgt die Zonenkarte der Hauptzone (core zoneAt, im Flug der Kontinent), Pause lässt die Zone stehen.
 // Gezeichnet wird mit map/renderer.mjs (dieselbe Routine nutzt das Video in W6).
 // Sicherheit: Texte aus der Datei nur über Textknoten (el) bzw. safeText ins Canvas; Kartenbilder nur aus maps/ der
 // eigenen Seite (img-src 'self'), der Pfad besteht nur aus einer geprüften Zahl; Markersymbole nur aus einer festen Liste.
-import { parseLog } from "../core/journal-model.mjs";
-import { fmtDate, fmtDuration, fmtNumber } from "../core/i18n.mjs";
+import { parseLog, zoneAt, flightAt } from "../core/journal-model.mjs";
+import { fmtDate, fmtDuration, fmtNumber, roman } from "../core/i18n.mjs";
 import { el } from "../core/render.mjs";
 import { readCharacterTrail, fromAxis, positionAt } from "../trail/parse-trail.mjs";
 import { mapInfo } from "../geo/map-geo.mjs";
 import { zoneName } from "../geo/zone-names.mjs";
-import { buildMarkers, buildChapters, buildLabels, prepareMapScene, chooseMap, chapterAtAxis, levelTrack, levelAt, playedTrack, playedAt } from "../map/scene.mjs";
+import { buildMarkers, buildChapters, buildActs, actOfChapter, buildLabels, prepareMapScene, chooseMap, chapterAtAxis, levelTrack, levelAt, playedTrack, playedAt } from "../map/scene.mjs";
 import { drawFrame, fitView, zoomAt, panBy, clampView, hitMarker, transformFor, visibleSpan, headAt, DEFAULT_ASPECT, ZOOM_STEP } from "../map/renderer.mjs";
 import * as PB from "../map/playback.mjs";
 import { t } from "./texts.mjs";
@@ -78,14 +81,37 @@ export function prepareJourney(journal, char) {
   const trail = readCharacterTrail(char, events);
   const markers = buildMarkers(journal, events, trail);
   const chapters = buildChapters(journal, trail);
+  const acts = buildActs(journal, chapters);
   const names = new Map();
   for (const c of chapters) if (c.mapID && c.name && !names.has(c.mapID)) names.set(c.mapID, c.name);
-  return { events, trail, markers, chapters, names, levels: levelTrack(journal, events), played: playedTrack(events, trail) };
+  return { events, trail, markers, chapters, acts, names, levels: levelTrack(journal, events), played: playedTrack(events, trail) };
 }
 
-// Kennzahlen eines Kapitels (Kapitel des Tagebuchs mit gleichem Beginn) oder der ganzen Reise -> { levels, played, quests, deaths, kills, places }
-export function journeyStats(journal, chapter) {
+// Stufenangabe "St. 3" / "St. 3–7" oder null
+export function levelLabel(lang, a, b) {
+  if (!Number.isFinite(a) && !Number.isFinite(b)) return null;
+  if (!Number.isFinite(a) || !Number.isFinite(b) || a === b) return t(lang, "jLevelSpan", Number.isFinite(a) ? a : b);
+  return t(lang, "jLevelRange", a, b);
+}
+
+// Titel eines Akts wie im Addon: "Akt I · Dun Morogh" (Anker-Zone in der Sprache der Seite)
+export function actTitle(lang, act) {
+  return t(lang, "jActTitle", roman(act.n), placeName(lang, act.mapID, act.name) || t(lang, "jUnderway"));
+}
+
+// Untertitel eines Akts: "St. 1–13 · 17 Std. 52 Min." (fehlende Teile entfallen)
+export function actSubtitle(lang, act) {
+  const dur = Number.isFinite(act.played) && act.played >= 60 ? fmtDuration(lang, act.played) : null;
+  return [levelLabel(lang, act.levelFrom, act.levelTo), dur].filter(Boolean).join(" · ");
+}
+
+// Kennzahlen eines Kapitels (Kapitel des Tagebuchs mit gleichem Beginn), eines Akts oder der ganzen Reise
+// -> { levels, played, quests, deaths, kills, places }
+export function journeyStats(journal, chapter, act) {
   const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  if (!chapter && act) {
+    return { levels: [num(act.levelFrom), num(act.levelTo)], played: num(act.played), quests: num(act.quests), deaths: num(act.deaths), kills: num(act.kills), places: num(act.places) };
+  }
   if (chapter) {
     const src = journal && Array.isArray(journal.chapters) ? journal.chapters.find((c) => c && c.start === chapter.t0) : null;
     return {
@@ -125,7 +151,9 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
   const S = {
     lang,
     mode: "zone", // zone | continent
-    chapter: -1, // -1 = ganze Reise
+    act: -1, // -1 = Ebene der Akte (ganze Reise), sonst der geöffnete Akt
+    chapter: -1, // -1 = kein Kapitel gewählt
+    follow: null, // Zonenkarte, der die Wiedergabe gerade folgt (mapID) oder null
     pb: PB.createPlayback(PB.DEFAULT_SPEED),
     map: null, // { mapID, art }
     view: { cx: 0.5, cy: 0.5, zoom: 1 },
@@ -221,16 +249,47 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
   const nowEpoch = () => {
     const a = cutAxis();
     if (a !== Infinity) return epochAt(a);
-    return S.chapter >= 0 ? epochAt(S.pb.p) : tl.t1;
+    return selection() ? epochAt(S.pb.p) : tl.t1;
   };
-  // Zeitraum des gewählten Kapitels (Epochen) oder null bei der ganzen Reise
+  // gewähltes Kapitel, sonst der geöffnete Akt, sonst null (ganze Reise)
+  function selection() {
+    if (S.chapter >= 0 && data.chapters[S.chapter]) return data.chapters[S.chapter];
+    if (S.act >= 0 && data.acts[S.act]) return data.acts[S.act];
+    return null;
+  }
+  // Zeitraum der Auswahl (Epochen) oder null bei der ganzen Reise
   const chapterRange = () => {
-    const c = S.chapter >= 0 ? data.chapters[S.chapter] : null;
+    const c = selection();
     return c ? { t0: c.t0, t1: c.t1 } : null;
   };
 
+  // Zonenwechsel beim Abspielen (wie Frame.playTarget im Addon): im Flug der Kontinent, sonst die Hauptzone zum Zeitpunkt
+  // (Grenz-Flackern und überflogene Zonen übersprungen) – nur mit Kartenbild; sonst bleibt die Karte, wie sie ist
+  function playTarget(epoch) {
+    const z = zoneAt(journal, epoch);
+    const zid = z ? Number(z.zone) : null;
+    if (!isMapId(zid)) return null;
+    if (flightAt(journal, epoch)) {
+      const c = chooseMap("continent", zid);
+      if (c && c.art) return c.mapID;
+    }
+    const m = chooseMap("zone", zid);
+    return m && m.art ? m.mapID : null;
+  }
+
+  // nur bei gewähltem Akt/Kapitel in der Zonenansicht, während Wiedergabe/Scrubben (angehalten am Ende: nichts)
+  function followZone() {
+    if (!selection() || S.mode !== "zone") return;
+    const a = cutAxis();
+    if (a === Infinity) return;
+    const want = playTarget(epochAt(a));
+    if (want && want !== S.follow) S.follow = want;
+  }
+
   function baseMapID() {
-    if (S.chapter >= 0 && data.chapters[S.chapter] && data.chapters[S.chapter].mapID) return data.chapters[S.chapter].mapID;
+    const sel = selection();
+    if (sel && S.mode === "zone" && S.follow) return S.follow;
+    if (sel && sel.mapID) return sel.mapID;
     const p = positionAt(data.trail, nowEpoch());
     if (p) return p.mapID;
     return data.trail.segments.length ? data.trail.segments[data.trail.segments.length - 1].mapID : null;
@@ -327,6 +386,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     imageFor(next);
     resetView();
     buildPins();
+    canvas.setAttribute("aria-label", t(S.lang, "jMapLabel", mapTitle())); // auch beim Zonenwechsel der Wiedergabe
     return true;
   }
 
@@ -432,9 +492,10 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
   function updateStats() {
     const L = S.lang;
     const ch = S.chapter >= 0 ? data.chapters[S.chapter] : null;
-    const s = journeyStats(journal, ch);
-    if (s.played === null && !ch && tl.t1 !== null) s.played = playedAt(data.played, tl.t1); // ohne /played: aktive Zeit der Spur
-    setText(doc, statsTitle, t(L, ch ? "jStatsChapter" : "jStatsTrip"));
+    const act = !ch && S.act >= 0 ? data.acts[S.act] : null;
+    const s = journeyStats(journal, ch, act);
+    if (s.played === null && !ch && !act && tl.t1 !== null) s.played = playedAt(data.played, tl.t1); // ohne /played: aktive Zeit der Spur
+    setText(doc, statsTitle, t(L, ch ? "jStatsChapter" : act ? "jStatsAct" : "jStatsTrip"));
     clear(stats);
     const n = (v) => (v === null ? "–" : fmtNumber(L, v));
     const [a, b] = s.levels;
@@ -449,10 +510,16 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
   function updateHead() {
     const L = S.lang;
     const ch = S.chapter >= 0 ? data.chapters[S.chapter] : null;
+    const act = S.act >= 0 ? data.acts[S.act] : null;
     if (ch) {
-      const lv = ch.minLevel !== null && ch.maxLevel !== null ? (ch.minLevel === ch.maxLevel ? t(L, "jLevelSpan", ch.minLevel) : t(L, "jLevelRange", ch.minLevel, ch.maxLevel)) : null;
-      setText(doc, eyebrow, t(L, "jChapterChip", fmtNumber(L, ch.n)) + (lv ? " · " + lv : ""));
+      const lv = levelLabel(L, ch.minLevel, ch.maxLevel);
+      const head = (act ? t(L, "jActChip", roman(act.n)) + " · " : "") + t(L, "jChapterChip", fmtNumber(L, ch.n));
+      setText(doc, eyebrow, head + (lv ? " · " + lv : ""));
       setText(doc, title, chapterName(ch));
+    } else if (act) {
+      const sub = actSubtitle(L, act);
+      setText(doc, eyebrow, t(L, "jActChip", roman(act.n)) + (sub ? " · " + sub : ""));
+      setText(doc, title, placeName(L, act.mapID, act.name) || t(L, "jUnderway"));
     } else {
       setText(doc, eyebrow, t(L, "jWholeTrip"));
       setText(doc, title, t(L, "journeyTitle"));
@@ -476,8 +543,10 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     scrub.setAttribute("aria-valuetext", text);
     setText(doc, playBtn, t(S.lang, S.pb.playing ? "jPause" : "jPlay"));
     playBtn.setAttribute("aria-pressed", S.pb.playing ? "true" : "false");
-    // laufendes Kapitel in der Leiste markieren
-    const cur = S.chapter >= 0 ? S.chapter : chapterAtAxis(data.chapters, a === Infinity ? tl.length : a);
+    // laufenden Akt (Ebene der Akte) bzw. laufendes Kapitel (im Akt oder ohne Akte) in der Leiste markieren
+    const ci = chapterAtAxis(data.chapters, a === Infinity ? (selection() ? S.pb.p : tl.length) : a);
+    const actLevel = data.acts.length > 0 && S.act < 0;
+    const cur = actLevel ? actOfChapter(data.acts, ci) : ci;
     for (const chip of chapterBar.childNodes) {
       if (!chip.dataset || !chip.classList || typeof chip.classList.toggle !== "function") continue;
       const idx = Number(chip.dataset.idx);
@@ -491,6 +560,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     const dt = S.last ? Math.min(0.25, (now - S.last) / 1000) : 0;
     S.last = now;
     PB.step(S.pb, dt);
+    followZone();
     syncMap();
     draw();
     updateInfo();
@@ -520,15 +590,45 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     return b;
   }
 
-  function selectChapter(i) {
-    S.chapter = i;
+  // Auswahl setzen: Akt/Kapitel springt an seinen Anfang (kein Abspielen, Karte = Zone am Start, wie im Addon); die ganze
+  // Reise zeigt wie bisher den ganzen Weg (Stelle am Ende)
+  function select(act, chapter) {
+    S.act = act;
+    S.chapter = chapter;
     PB.pause(S.pb);
-    if (i >= 0 && data.chapters[i]) PB.setRange(S.pb, data.chapters[i].a0, Math.max(data.chapters[i].a1, data.chapters[i].a0));
-    else PB.setRange(S.pb, 0, tl.length);
+    const sel = selection();
+    if (sel) {
+      PB.setRange(S.pb, sel.a0, Math.max(sel.a1, sel.a0));
+      S.pb.p = S.pb.p0;
+      S.follow = S.mode === "zone" ? playTarget(sel.t0) : null;
+    } else {
+      PB.setRange(S.pb, 0, tl.length);
+      S.follow = null;
+    }
     S.map = null;
-    if (share) share.syncChapter(i);
+    if (share) share.syncChapter(S.chapter);
     buildControls();
     refresh();
+  }
+
+  function selectChapter(i) {
+    if (i < 0 || !data.chapters[i]) return select(-1, -1);
+    if (!data.acts.length) return select(-1, i);
+    // das gewählte Kapitel noch einmal: zurück zu seinem Akt (wie im Addon)
+    if (S.chapter === i && S.act >= 0) return select(S.act, -1);
+    return select(actOfChapter(data.acts, i), i);
+  }
+
+  function selectAct(n) {
+    return n >= 0 && data.acts[n] ? select(n, -1) : select(-1, -1);
+  }
+
+  // eine Ebene zurück (Esc): Kapitel -> Akt -> Akte; -> true, wenn es etwas zurückzugehen gab
+  function back() {
+    if (S.chapter >= 0 && S.act >= 0) select(S.act, -1);
+    else if (S.act >= 0 || S.chapter >= 0) select(-1, -1);
+    else return false;
+    return true;
   }
 
   function legendItem(art, label, cls) {
@@ -545,6 +645,8 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
         if (S.mode === mode) return;
         S.mode = mode;
         S.map = null;
+        S.follow = null;
+        followZone();
         buildControls();
         refresh();
       });
@@ -560,11 +662,41 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
       b.addEventListener("click", () => selectChapter(idx));
       chapterBar.appendChild(b);
     };
-    chip(-1, t(L, "jWholeTrip"), null);
-    data.chapters.forEach((c, i) => {
-      const lv = c.minLevel !== null && c.maxLevel !== null ? (c.minLevel === c.maxLevel ? t(L, "jLevelSpan", c.minLevel) : t(L, "jLevelRange", c.minLevel, c.maxLevel)) : null;
-      chip(i, fmtNumber(L, c.n) + " · " + chapterName(c), lv);
-    });
+    const chapterChip = (i) => {
+      const c = data.chapters[i];
+      const lv = levelLabel(L, c.minLevel, c.maxLevel);
+      chip(i, fmtNumber(L, c.n) + " · " + chapterName(c), [lv, S.chapter === i && S.act >= 0 ? t(L, "jChapterAgain") : null].filter(Boolean).join(", ") || null);
+    };
+    if (!data.acts.length) {
+      // ohne Akte (nur Spur, kein Tagebuch): flache Kapitelleiste wie bisher
+      chip(-1, t(L, "jWholeTrip"), null);
+      data.chapters.forEach((c, i) => chapterChip(i));
+    } else if (S.act < 0) {
+      // oberste Ebene: ganze Reise und die Akte („Akt I · Dun Morogh“, darunter Stufe und Dauer)
+      chapterBar.setAttribute("aria-label", t(L, "jActs"));
+      chip(-1, t(L, "jWholeTrip"), null);
+      data.acts.forEach((a, i) => {
+        const name = actTitle(L, a);
+        const sub = actSubtitle(L, a);
+        const b = el(doc, "button", "subnav-btn chapter-chip act-chip", el(doc, "span", "act-chip-title", name), sub ? el(doc, "span", "act-chip-sub", sub) : null);
+        b.type = "button";
+        if (b.dataset) b.dataset.idx = String(i);
+        b.setAttribute("aria-pressed", "false");
+        b.setAttribute("aria-label", [name, sub, t(L, "jActHint", fmtNumber(L, a.chapters.length))].filter(Boolean).join(", "));
+        b.addEventListener("click", () => selectAct(i));
+        chapterBar.appendChild(b);
+      });
+    } else {
+      // geöffneter Akt: zurück zu den Akten, dann seine Kapitel
+      const a = data.acts[S.act];
+      chapterBar.setAttribute("aria-label", t(L, "jActChapters", roman(a.n)));
+      const bk = el(doc, "button", "subnav-btn chapter-chip back-chip", "← " + t(L, "jBackActs"));
+      bk.type = "button";
+      bk.setAttribute("aria-label", t(L, "jBackActs") + ", " + t(L, "jBackActsHint"));
+      bk.addEventListener("click", () => select(-1, -1));
+      chapterBar.appendChild(bk);
+      for (const i of a.chapters) chapterChip(i);
+    }
     clear(speedBar);
     speedBar.setAttribute("aria-label", t(L, "jSpeedLabel"));
     for (const sp of PB.SPEEDS) {
@@ -610,6 +742,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     PB.pause(S.pb);
     PB.seek(S.pb, Number(scrub.value) / 1000);
     if (Number(scrub.value) >= 1000) S.pb.p = S.pb.p1;
+    followZone();
     refresh();
   });
 
@@ -739,6 +872,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     else if (e.key === "ArrowUp") S.view = panBy(frameState(), 0, step);
     else if (e.key === "ArrowDown") S.view = panBy(frameState(), 0, -step);
     else if (e.key === " ") playBtn.click();
+    else if (e.key === "Escape") handled = back();
     else handled = false;
     if (handled) {
       if (e.preventDefault) e.preventDefault();

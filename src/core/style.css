@@ -217,6 +217,11 @@ body.dragging::after {
 .toc-dots { flex: 1; border-bottom: 1px dotted var(--ink-faint); transform: translateY(-4px); }
 .toc-meta { color: var(--ink-soft); font-size: 0.95em; white-space: nowrap; }
 .toc-extra .toc-title { font-style: italic; }
+.toc-act { margin-top: 12px; border-top: 1px solid var(--ink-faint); padding-top: 9px; }
+.toc-act .toc-num { font-variant: small-caps; letter-spacing: 0.04em; }
+.toc-act .toc-title { font-weight: 600; font-size: 1.18em; }
+.toc-act + .toc-row:not(.toc-act) { padding-top: 3px; }
+.toc-chapter .toc-title { padding-left: 0.6em; }
 
 /* chapter */
 .chapter-head { border-bottom: 1px solid var(--rule); padding-bottom: 10px; margin-bottom: 16px; }

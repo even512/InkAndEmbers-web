@@ -154,14 +154,14 @@ export function buildChapters(journal, trail, index) {
       const p = positionAt(trail, ch.start);
       mapID = p ? p.mapID : null;
     }
-    list.push({ mapID, name: txt(ch.zoneName), t0: ch.start, t1, minLevel: ch.minLevel ?? null, maxLevel: ch.maxLevel ?? null });
+    list.push({ src: i, mapID, name: txt(ch.zoneName), t0: ch.start, t1, minLevel: ch.minLevel ?? null, maxLevel: ch.maxLevel ?? null });
   }
   if (!list.length && trail && Array.isArray(trail.segments)) {
     for (const s of trail.segments) {
       const z = zoneOf(s.mapID, index) || s.mapID;
       const last = list[list.length - 1];
       if (last && last.mapID === z) last.t1 = s.t1;
-      else list.push({ mapID: z, name: null, t0: s.t0, t1: s.t1, minLevel: null, maxLevel: null });
+      else list.push({ src: -1, mapID: z, name: null, t0: s.t0, t1: s.t1, minLevel: null, maxLevel: null });
     }
   }
   return list.map((c, i) => {
@@ -174,6 +174,44 @@ export function buildChapters(journal, trail, index) {
       a1: tl ? toAxis(tl, c.t1) : 0,
     };
   });
+}
+
+// Akte (Gruppen von Kapiteln, gleiche Regel wie im Spiel: journal.acts) auf die Kapitel der Karte gelegt.
+// -> [{ n, chapters (Indizes in chapters), mapID, name (Anker-Zone), t0, t1, a0, a1, levelFrom, levelTo, played, quests,
+//       kills, deaths, places }]; leer, wenn das Journal keine Akte hat (dann gilt die flache Kapitelleiste)
+export function buildActs(journal, chapters) {
+  const src = journal && Array.isArray(journal.acts) ? journal.acts : [];
+  const jcs = journal && Array.isArray(journal.chapters) ? journal.chapters : [];
+  const list = Array.isArray(chapters) ? chapters : [];
+  const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const out = [];
+  for (const a of src) {
+    if (!a || !Array.isArray(a.chapters)) continue;
+    const idx = [];
+    for (const ci of a.chapters) {
+      const k = list.findIndex((c) => c.src === ci);
+      if (k >= 0 && !idx.includes(k)) idx.push(k);
+    }
+    if (!idx.length) continue;
+    const first = list[idx[0]];
+    const last = list[idx[idx.length - 1]];
+    const ak = list.findIndex((c) => c.src === a.anchor);
+    const anchor = ak >= 0 ? list[ak] : first;
+    let places = 0;
+    for (const ci of a.chapters) if (jcs[ci] && Array.isArray(jcs[ci].discoveries)) places += jcs[ci].discoveries.length;
+    out.push({
+      n: out.length + 1, chapters: idx, mapID: anchor.mapID, name: anchor.name, t0: first.t0, t1: last.t1, a0: first.a0, a1: last.a1,
+      levelFrom: num(a.levelFrom), levelTo: num(a.levelTo), played: num(a.active), quests: num(a.quests), kills: num(a.kills),
+      deaths: num(a.deaths), places,
+    });
+  }
+  return out;
+}
+
+// Akt (Index) zum Kapitel-Index oder -1
+export function actOfChapter(acts, ci) {
+  for (let i = 0; i < acts.length; i++) if (acts[i].chapters.includes(ci)) return i;
+  return -1;
 }
 
 // Kapitel, das zur Achsensekunde a läuft (Index) oder -1

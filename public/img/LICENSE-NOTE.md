@@ -1,6 +1,6 @@
 # Grafiken des Addons Ink & Embers
 
-Die Bilder in diesem Ordner (Lesezeichen-Kappen, Medaillen-Motive und Ringe, Kartenmarker, Kampf-Embleme, Volks-Porträts,
+Die Bilder in diesem Ordner (Lesezeichen-Kappen, Medaillen-Motive und Ringe, Akt-Siegel, Kartenmarker, Kampf-Embleme, Volks-Porträts,
 Buch-Symbol) stammen aus dem Addon **Ink & Embers** (`addon/InkAndEmbers/Media/`, Autor EveN) und wurden für die Webseite nur
 zugeschnitten und als WebP gespeichert.
 

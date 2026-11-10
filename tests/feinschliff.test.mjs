@@ -50,23 +50,23 @@ describe("Kapitelmodus der Reise", () => {
     const dateOf = (t) => new Date(t * 1000).getDate();
     const whole = info();
     expect(view.data.acts.length).toBeGreaterThan(0);
-    byClass(view.element, "act-chip")[0].click(); // Akt I öffnen
+    byClass(view.element, "jtoc-act")[0].click(); // Akt I im Inhalt
     expect([view.state.act, view.state.chapter, view.state.pb.playing]).toEqual([0, -1, false]);
     expect(view.state.pb.p).toBe(view.state.pb.p0);
     expect(day(info())).toBe(dateOf(view.data.acts[0].t0));
-    // im Akt: zurück + seine Kapitel
-    const chips = byClass(view.element, "chapter-chip");
-    expect(chips[0].className).toContain("back-chip");
-    expect(chips.length).toBe(1 + view.data.acts[0].chapters.length);
+    // unter dem offenen Akt seine Kapitel (eingerückt), ein Klick springt an den Kapitelanfang
+    const chips = byClass(view.element, "jtoc-chapter");
+    expect(chips.length).toBe(view.data.acts[0].chapters.length);
     const ci = view.data.acts[0].chapters[view.data.acts[0].chapters.length - 1];
     chips[chips.length - 1].click();
     expect([view.state.act, view.state.chapter, view.state.pb.playing]).toEqual([0, ci, false]);
     expect(day(info())).toBe(dateOf(view.data.chapters[ci].t0));
     expect(info()).not.toBe(whole);
-    // das gewählte Kapitel noch einmal: zurück zum Akt; dann zurück zu den Akten = ganze Reise
-    byClass(view.element, "chapter-chip")[byClass(view.element, "chapter-chip").length - 1].click();
+    expect(byClass(view.element, "jtoc-chapter")[chips.length - 1].textContent).toMatch(/^▸/);
+    // das gewählte Kapitel noch einmal: zurück zum Akt; „Ganze Reise“ führt zur ganzen Reise
+    byClass(view.element, "jtoc-chapter")[chips.length - 1].click();
     expect([view.state.act, view.state.chapter]).toEqual([0, -1]);
-    byClass(view.element, "back-chip")[0].click();
+    byClass(view.element, "jtoc-whole")[0].click();
     expect([view.state.act, view.state.chapter]).toEqual([-1, -1]);
     expect(info()).toBe(whole);
     view.destroy();

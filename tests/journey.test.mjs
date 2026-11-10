@@ -355,9 +355,9 @@ describe("Bedienung in der Seite", () => {
     expect(cls("journey-panel")).toHaveLength(1);
     expect(cls("speed-switch")[0].textContent).toBe("LangsamMittelSchnell");
     expect(cls("mode-switch")[0].textContent).toBe("ZoneKontinent");
-    const chips = cls("chapter-chip");
-    expect(chips[0].textContent).toBe("Ganze Reise");
-    expect(chips.length).toBeGreaterThan(1);
+    expect(cls("jtoc-head")[0].textContent).toBe("Inhalt");
+    expect(cls("jtoc-whole")[0].textContent).toMatch(/^Ganze Reise/);
+    expect(cls("jtoc-act").length).toBeGreaterThan(0);
     expect(cls("play-info")[0].textContent).toMatch(/2026/);
     // Kontinent
     cls("mode-switch")[0].childNodes[1].click();

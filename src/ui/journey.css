@@ -1,22 +1,57 @@
-/* Reise-Ansicht: Kopf mit Kapitelname und Zone/Kontinent, Kapitel als Textreiter, Karte im 1-px-Rahmen mit Addon-Markern,
-   Wiedergabe, Zeitangabe, Legende; rechts Kennzahlen „In diesem Kapitel“ und das Teilen-Feld (einziges umrahmtes Feld). */
+/* Reise-Ansicht wie die Doppelseite im Addon: links das Inhaltsverzeichnis (Bände, Akte mit Wachssiegel, Kapitel), darunter
+   Kennzahlen „In diesem Akt/Kapitel“ und das Teilen-Feld; rechts Kopf mit Titel/Kennzahlen der Auswahl und Zone/Kontinent,
+   Karte im 1-px-Rahmen mit Addon-Markern, Wiedergabe, Zeitangabe, Legende. */
 
+.journey-head { margin-bottom: var(--s-3); }
 .journey-heading { min-width: 0; }
 .journey-title { overflow-wrap: anywhere; }
-.chapter-chip.current { color: var(--c-ink); }
+.journey-figures { margin-top: var(--s-1); font-size: var(--fs-sm); color: var(--c-ink-muted); font-variant-numeric: tabular-nums lining-nums; }
+.journey-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-4); }
+.icons-label { display: flex; align-items: center; gap: var(--s-2); min-height: var(--touch); cursor: pointer; font-size: var(--fs-sm); }
+.icons-label[hidden] { display: none; }
 
-/* Akte als oberste Ebene der Leiste: Titel „Akt I · Zone“, darunter Stufe und Dauer (wie die Zettel im Addon) */
-.chapter-bar { row-gap: var(--s-1); }
-.act-chip { flex-direction: column; align-items: flex-start; justify-content: center; padding: var(--s-1) 0; line-height: 1.25; }
-.act-chip-title { color: var(--c-ink); font-weight: var(--fw-strong); }
-.act-chip-sub { font-size: var(--fs-sm); color: var(--c-ink-muted); }
-.act-chip:hover .act-chip-title, .act-chip.current .act-chip-title { color: var(--c-bronze); }
-.back-chip { color: var(--c-bronze); font-weight: var(--fw-strong); }
-.back-chip:hover { color: var(--c-ink); }
+.journey-body {
+  display: grid; gap: var(--s-4) var(--s-6); margin-top: var(--s-4);
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  grid-template-areas: "toc main" "aside main";
+  grid-template-rows: auto 1fr;
+}
+.journey-toc { grid-area: toc; min-width: 0; }
+.journey-main { grid-area: main; min-width: 0; }
+.journey-aside { grid-area: aside; display: grid; gap: var(--s-6); align-content: start; min-width: 0; }
 
-.journey-body { display: grid; grid-template-columns: minmax(0, 1fr) var(--aside-w); gap: var(--s-6); margin-top: var(--s-4); }
-.journey-main { min-width: 0; }
-.journey-aside { display: grid; gap: var(--s-6); align-content: start; min-width: 0; }
+/* ---- Inhaltsverzeichnis --------------------------------------------------------------------------------- */
+.jtoc-head { font-size: var(--fs-md); font-variant: small-caps; letter-spacing: 0.12em; text-transform: lowercase; color: var(--c-bronze); }
+.jtoc-sum { margin: var(--s-1) 0 var(--s-3); font-size: var(--fs-sm); color: var(--c-ink-muted); font-variant-numeric: tabular-nums lining-nums; }
+.jtoc-list { list-style: none; margin: 0; padding: 0; border-top: var(--border) solid var(--c-rule); max-height: calc(100vh - 140px); overflow-y: auto; overscroll-behavior: contain; }
+.jtoc-item { margin: 0; }
+.jtoc-depth-1 { padding-left: 14px; }
+.jtoc-btn {
+  display: flex; align-items: center; gap: 6px; width: 100%; min-height: 36px; padding: 2px 6px;
+  font: inherit; text-align: left; color: var(--c-ink); background: none; border: 0; border-radius: var(--radius-1); cursor: pointer;
+}
+.jtoc-btn:hover { background: var(--c-hover); }
+.jtoc-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jtoc-dots { flex: 1 1 8px; min-width: 8px; align-self: flex-end; margin-bottom: 0.55em; border-bottom: 1px dotted var(--c-line); opacity: 0.7; }
+.jtoc-meta { flex: none; white-space: nowrap; font-size: 0.8125rem; color: var(--c-ink-muted); font-variant-numeric: tabular-nums lining-nums; }
+.jtoc-whole { font-style: italic; border-bottom: var(--border) solid var(--c-rule); border-radius: 0; }
+.jtoc-band { margin-top: var(--s-2); font-weight: var(--fw-strong); font-variant: small-caps; letter-spacing: 0.06em; }
+.jtoc-band[aria-expanded="false"] { color: var(--c-ink-muted); }
+.jtoc-act .jtoc-name { font-weight: var(--fw-strong); }
+.jtoc-chapter { min-height: 28px; padding-left: 44px; font-size: var(--fs-sm); }
+.jtoc-mark { flex: none; width: 0.8em; margin-left: -0.9em; color: var(--c-bronze); }
+.jtoc-btn.selected { background: var(--c-hover); color: var(--c-bronze); }
+.jtoc-btn.selected .jtoc-name { font-weight: var(--fw-strong); }
+.jtoc-btn.current .jtoc-name { color: var(--c-bronze); }
+.jtoc-seal { flex: none; width: 32px; height: 32px; margin: -2px 0; }
+/* gezeichnetes Wachssiegel ab Akt XXXI (eingeprägte römische Zahl) */
+.jtoc-seal-drawn {
+  display: grid; place-items: center; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #B5473A 0%, #8A2A20 55%, #5E1712 100%);
+  box-shadow: inset 0 0 0 2px rgb(94 23 18 / 0.85), inset 0 0 0 3px rgb(206 108 92 / 0.45), 0 1px 2px rgb(0 0 0 / 0.35);
+  color: #5A130E; text-shadow: 0 1px 0 rgb(230 140 120 / 0.55); font-size: 9px; font-weight: 700; letter-spacing: -0.02em;
+}
+@media (pointer: coarse) { .jtoc-btn { min-height: var(--touch); } }
 .aside-title { font-size: var(--fs-md); margin-bottom: var(--s-3); }
 
 /* ---- Karte ---------------------------------------------------------------------------------------------- */
@@ -121,14 +156,25 @@
 
 /* ---- schmal ---------------------------------------------------------------------------------------------- */
 @media (max-width: 960px) {
-  .journey-body { grid-template-columns: minmax(0, 1fr); }
+  /* gestapelt: Inhalt (kurz, rollt selbst), Karte mit Kopf, Kennzahlen und Teilen */
+  .journey-body { grid-template-columns: minmax(0, 1fr); grid-template-areas: "toc" "main" "aside"; grid-template-rows: auto; }
+  .jtoc-list { max-height: 46vh; }
   .journey-aside { grid-template-columns: 1fr 1fr; align-items: start; }
 }
 @media (max-width: 640px) {
   .journey-aside { grid-template-columns: minmax(0, 1fr); }
   .speed-switch { order: 3; }
 }
+@media (max-width: 480px) {
+  /* Handy: Stufe/Dauer unter den Namen statt Punktlinie */
+  .jtoc-btn { flex-wrap: wrap; row-gap: 0; padding-top: 4px; padding-bottom: 4px; }
+  .jtoc-dots { display: none; }
+  .jtoc-name { flex: 1 1 0; }
+  .jtoc-meta { flex-basis: 100%; padding-left: 38px; }
+  .jtoc-whole .jtoc-meta, .jtoc-band .jtoc-meta { padding-left: 0; }
+  .jtoc-chapter .jtoc-meta { padding-left: 0.5em; }
+}
 
 @media print {
-  .playback, .map-tools, .chapter-bar, .mode-switch, .share-panel, .map-pins { display: none !important; }
+  .playback, .map-tools, .journey-toc, .journey-tools, .share-panel, .map-pins { display: none !important; }
 }

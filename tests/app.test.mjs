@@ -10,7 +10,7 @@ const SAMPLE = fixture("journal-export-sample.lua");
 const XSS = fixture("xss.lua");
 
 const ALLOWED_TAGS = new Set(["DIV", "SECTION", "HEADER", "FOOTER", "MAIN", "H1", "H2", "H3", "P", "SPAN", "STRONG", "BUTTON", "SELECT", "OPTION", "INPUT", "LABEL", "BODY", "HTML", "CANVAS", "IMG", "UL", "LI", "DL", "DT", "DD", "SMALL"]);
-const ALLOWED_ATTRS = new Set(["lang", "type", "role", "aria-label", "aria-pressed", "aria-hidden", "accept", "tabindex", "aria-valuetext", "src", "alt", "width", "height", "decoding", "id", "for", "aria-selected", "aria-controls", "aria-labelledby", "aria-live", "aria-describedby"]);
+const ALLOWED_ATTRS = new Set(["lang", "type", "role", "aria-label", "aria-pressed", "aria-hidden", "accept", "tabindex", "aria-valuetext", "src", "alt", "width", "height", "decoding", "id", "for", "aria-selected", "aria-controls", "aria-labelledby", "aria-live", "aria-describedby", "aria-expanded", "title"]);
 // Bilder nur aus public/img/ mit festem Namen (Addon-Kunst), nie aus Dateidaten
 const IMG_SRC = /^img\/(book-icon|tab-reise|tab-chronik|portrait-(human|dwarf|nightelf|gnome|orc|undead|tauren|troll|skyborne)|map-(level|milestone|death|boss|rare|photo|current|hearth))\.webp$/;
 

@@ -180,22 +180,22 @@ describe("Reise im neuen Design", () => {
     const { journal, char } = load(TRAIL);
     const env = fakeEnv({ language: "de-DE" });
     const view = createJourneyView(env.doc, env.win, { journal, char, lang: "de" });
-    const chips = byClass(view.element, "chapter-chip").map((b) => b.textContent);
-    expect(chips[0]).toBe("Ganze Reise");
-    expect(chips.slice(1).join("|")).toMatch(/Wald von Elwynn/);
-    expect(chips.join("|")).not.toMatch(/Elwynn Forest/);
+    const rows = () => byClass(view.element, "jtoc-btn").map((b) => b.textContent).join("|");
+    expect(byClass(view.element, "jtoc-whole")[0].textContent).toMatch(/^Ganze Reise/);
+    expect(rows()).toMatch(/Wald von Elwynn/);
+    expect(rows()).not.toMatch(/Elwynn Forest/);
     view.setLang("en");
-    expect(byClass(view.element, "chapter-chip").map((b) => b.textContent).join("|")).toMatch(/Elwynn Forest/);
-    // Akt wählen (oberste Ebene, Titel „Act I · …“), dann ein Kapitel darin: Überschrift und Kennzahlen folgen
+    expect(rows()).toMatch(/Elwynn Forest/);
+    expect(byClass(view.element, "jtoc-head")[0].textContent).toBe("Contents");
+    // Akt wählen (Siegel + Zone im Inhalt), dann ein Kapitel darin: Überschrift und Kennzahlen folgen
     const act = view.data.acts[0];
-    expect(byClass(view.element, "act-chip-title")[0].textContent).toBe("Act I · " + placeName("en", act.mapID, act.name));
-    byClass(view.element, "act-chip")[0].click();
-    expect(byClass(view.element, "journey-title")[0].textContent).toBe(placeName("en", act.mapID, act.name));
+    byClass(view.element, "jtoc-act")[0].click();
+    expect(byClass(view.element, "journey-title")[0].textContent).toBe("Act I · " + placeName("en", act.mapID, act.name));
     expect(byClass(view.element, "aside-title")[0].textContent).toBe("In this act");
-    expect(byClass(view.element, "back-chip")[0].textContent).toBe("← Back to the acts");
-    byClass(view.element, "chapter-chip")[1].click();
-    const ch = view.data.chapters[act.chapters[0]];
-    expect(byClass(view.element, "journey-title")[0].textContent).toBe(placeName("en", ch.mapID, ch.name));
+    const ci = act.chapters[0];
+    byClass(view.element, "jtoc-chapter")[0].click(); // erstes Kapitel des offenen Akts
+    const ch = view.data.chapters[ci];
+    expect(byClass(view.element, "journey-title")[0].textContent).toBe("Chapter " + ["I", "II", "III", "IV", "V", "VI"][ch.n - 1] + " · " + placeName("en", ch.mapID, ch.name));
     expect(byClass(view.element, "aside-title")[0].textContent).toBe("In this chapter");
     view.destroy();
   });

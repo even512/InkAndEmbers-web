@@ -1,7 +1,8 @@
 // Reise-Ansicht: Karte (Canvas) mit Route und Flügen, Marker als Knöpfe mit Addon-Symbolen (public/img/map-*.webp) darüber,
-// Zoom/Pan (Maus, Rad, Touch, Tastatur), Tooltips, Akte als oberste Ebene der Leiste (wie im Addon: „Akt I · Dun Morogh“,
-// Stufe, Dauer; Klick zeigt die Kapitel des Akts, „Zurück zu den Akten“), Umschalter Zone/Kontinent, Wiedergabe 20/60/180×
-// mit Zeitleiste und mitlaufender Stufe, Kennzahlen „In diesem Akt/Kapitel“ und das Teilen-Feld (W6) daneben.
+// Zoom/Pan (Maus, Rad, Touch, Tastatur), Tooltips, links das Inhaltsverzeichnis wie im Addon (K4: „Inhalt“, Band I–III nach
+// Stufe 1–20/21–40/41–60, Akte mit Wachssiegel, darunter eingerückt die Kapitel des offenen Akts; Akkordeon), rechts der Kopf
+// mit Titel/Kennzahlen der Auswahl über der Karte, Umschalter Zone/Kontinent (mit „Symbole zeigen“), Wiedergabe 20/60/180×
+// mit Zeitleiste und mitlaufender Stufe, Kennzahlen „In diesem Akt/Kapitel“ und das Teilen-Feld (W6).
 // Akt/Kapitel wählen spielt nicht ab: die Karte springt an den Anfang (Zone des Starts, Zeitleiste am Anfang). Beim Abspielen
 // und Scrubben folgt die Zonenkarte der Hauptzone (core zoneAt, im Flug der Kontinent), Pause lässt die Zone stehen.
 // Gezeichnet wird mit map/renderer.mjs (dieselbe Routine nutzt das Video in W6).
@@ -105,6 +106,31 @@ export function actSubtitle(lang, act) {
   return [levelLabel(lang, act.levelFrom, act.levelTo), dur].filter(Boolean).join(" · ");
 }
 
+// Bände des Inhaltsverzeichnisses (Addon journal/Contents.lua): Stufenbänder nach der Startstufe des Akts, nur Bände mit Akten.
+// -> [{ index (1..3), roman, from, to, acts: [Akt-Indizes] }]
+export const CONTENTS_BANDS = Object.freeze([[1, 20], [21, 40], [41, 60]]);
+export function contentsBands(acts) {
+  const out = [];
+  (Array.isArray(acts) ? acts : []).forEach((a, i) => {
+    const lv = Number.isFinite(a && a.levelFrom) ? a.levelFrom : 1;
+    let b = CONTENTS_BANDS.findIndex((r) => lv <= r[1]);
+    if (b < 0) b = CONTENTS_BANDS.length - 1;
+    let e = out.find((x) => x.index === b + 1);
+    if (!e) {
+      e = { index: b + 1, roman: roman(b + 1), from: CONTENTS_BANDS[b][0], to: CONTENTS_BANDS[b][1], acts: [] };
+      out.push(e);
+    }
+    e.acts.push(i);
+  });
+  return out.sort((x, y) => x.index - y.index);
+}
+
+// Band (1..3) eines Akts oder 0
+export function bandOfAct(bands, ai) {
+  const b = bands.find((x) => x.acts.includes(ai));
+  return b ? b.index : 0;
+}
+
 // Kennzahlen eines Kapitels (Kapitel des Tagebuchs mit gleichem Beginn), eines Akts oder der ganzen Reise
 // -> { levels, played, quests, deaths, kills, places }
 export function journeyStats(journal, chapter, act) {
@@ -154,6 +180,8 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     act: -1, // -1 = Ebene der Akte (ganze Reise), sonst der geöffnete Akt
     chapter: -1, // -1 = kein Kapitel gewählt
     follow: null, // Zonenkarte, der die Wiedergabe gerade folgt (mapID) oder null
+    tocBand: 0, // aufgeschlagener Band des Inhaltsverzeichnisses (0 = der des gewählten bzw. letzten Akts)
+    showIcons: true, // „Symbole zeigen“ auf der Kontinentkarte (wie im Addon)
     pb: PB.createPlayback(PB.DEFAULT_SPEED),
     map: null, // { mapID, art }
     view: { cx: 0.5, cy: 0.5, zoom: 1 },
@@ -182,15 +210,31 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
 
   // ---------------------------------------------------------------- Gerüst
   const root = el(doc, "section", "journey-panel");
-  const eyebrow = el(doc, "p", "eyebrow journey-eyebrow");
   const title = el(doc, "h2", "sec-title journey-title");
   title.setAttribute("id", "journey-title");
   root.setAttribute("aria-labelledby", "journey-title");
+  // Zeile unter dem Titel: Kennzahlen der Auswahl („Akt I · Stufe 10–11 · 58 Min. · 6 Quests“)
+  const eyebrow = el(doc, "p", "journey-eyebrow journey-figures");
   const modeBar = el(doc, "div", "seg mode-switch");
   modeBar.setAttribute("role", "group");
-  const head = el(doc, "div", "sec-head journey-head", el(doc, "div", "journey-heading", eyebrow, title), modeBar);
-  const chapterBar = el(doc, "div", "subnav chapter-bar");
-  chapterBar.setAttribute("role", "group");
+  const iconsBox = doc.createElement("input");
+  iconsBox.type = "checkbox";
+  iconsBox.className = "icons-toggle";
+  iconsBox.checked = true;
+  const iconsText = el(doc, "span", "icons-label-text");
+  const iconsLabel = el(doc, "label", "icons-label", iconsBox, iconsText);
+  iconsLabel.hidden = true;
+  const head = el(doc, "div", "sec-head journey-head", el(doc, "div", "journey-heading", title, eyebrow), el(doc, "div", "journey-tools", iconsLabel, modeBar));
+  // Inhaltsverzeichnis (linke Buchseite des Addons)
+  const toc = el(doc, "div", "jtoc");
+  toc.setAttribute("role", "navigation");
+  const tocHead = el(doc, "h3", "jtoc-head");
+  const tocSum = el(doc, "p", "jtoc-sum");
+  const tocList = el(doc, "ul", "jtoc-list");
+  toc.appendChild(tocHead);
+  toc.appendChild(tocSum);
+  toc.appendChild(tocList);
+  let tocRows = []; // [{ kind, idx, btn }]
   const canvas = doc.createElement("canvas");
   canvas.className = "map-canvas";
   canvas.tabIndex = 0;
@@ -429,6 +473,9 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     }
   }
 
+  // „Symbole zeigen“ gilt wie im Addon nur auf der Kontinentkarte; Route und Pfeil bleiben immer
+  const iconsShown = () => S.showIcons || S.mode !== "continent";
+
   function relabelPins() {
     for (const p of pinList) p.btn.setAttribute("aria-label", markerLines(S.lang, p.m).join(", "));
   }
@@ -436,9 +483,10 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
   function placePins(st) {
     const T = transformFor(st);
     const { lo, hi: cut } = visibleSpan(st, cutAxis());
+    const icons = iconsShown();
     for (const p of pinList) {
       const x = T.ox + p.m.px * T.sx, y = T.oy + p.m.py * T.sy;
-      const show = p.m.t <= cut && p.m.t >= lo && x >= -14 && y >= -14 && x <= st.width + 14 && y <= st.height + 14;
+      const show = icons && p.m.t <= cut && p.m.t >= lo && x >= -14 && y >= -14 && x <= st.width + 14 && y <= st.height + 14;
       p.btn.hidden = !show;
       if (show && p.btn.style) p.btn.style.transform = "translate(" + x.toFixed(1) + "px, " + y.toFixed(1) + "px)";
       if (p.btn.classList) {
@@ -511,20 +559,25 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     const L = S.lang;
     const ch = S.chapter >= 0 ? data.chapters[S.chapter] : null;
     const act = S.act >= 0 ? data.acts[S.act] : null;
-    if (ch) {
-      const lv = levelLabel(L, ch.minLevel, ch.maxLevel);
-      const head = (act ? t(L, "jActChip", roman(act.n)) + " · " : "") + t(L, "jChapterChip", fmtNumber(L, ch.n));
-      setText(doc, eyebrow, head + (lv ? " · " + lv : ""));
-      setText(doc, title, chapterName(ch));
-    } else if (act) {
-      const sub = actSubtitle(L, act);
-      setText(doc, eyebrow, t(L, "jActChip", roman(act.n)) + (sub ? " · " + sub : ""));
-      setText(doc, title, placeName(L, act.mapID, act.name) || t(L, "jUnderway"));
+    // wie Frame.tocHead im Addon: Titel der Auswahl, darunter Akt (beim Kapitel), Stufe, Spielzeit, Quests (beim Akt: Kapitel)
+    if (ch || act) {
+      const s = journeyStats(journal, ch, ch ? null : act);
+      const bits = [];
+      if (ch && act) bits.push(t(L, "jActChip", roman(act.n)));
+      const [a, b] = s.levels;
+      if (a !== null || b !== null) bits.push(t(L, "jLevels", a !== null && b !== null && b > a ? a + "–" + b : a ?? b));
+      if (s.played !== null && s.played >= 60) bits.push(fmtDuration(L, s.played));
+      if (s.quests !== null) bits.push(countText(L, s.quests, "jQuestsN1", "jQuestsN"));
+      if (!ch) bits.push(countText(L, act.chapters.length, "jChaptersN1", "jChaptersN"));
+      setText(doc, eyebrow, bits.join(" · "));
+      setText(doc, title, ch ? t(L, "jTocChapter", roman(ch.n), chapterName(ch)) : actTitle(L, act));
     } else {
       setText(doc, eyebrow, t(L, "jWholeTrip"));
       setText(doc, title, t(L, "journeyTitle"));
     }
   }
+
+  const countText = (L, n, one, many) => t(L, n === 1 ? one : many, fmtNumber(L, n));
 
   function updateInfo() {
     const a = cutAxis();
@@ -543,14 +596,12 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     scrub.setAttribute("aria-valuetext", text);
     setText(doc, playBtn, t(S.lang, S.pb.playing ? "jPause" : "jPlay"));
     playBtn.setAttribute("aria-pressed", S.pb.playing ? "true" : "false");
-    // laufenden Akt (Ebene der Akte) bzw. laufendes Kapitel (im Akt oder ohne Akte) in der Leiste markieren
+    // laufenden Akt und laufendes Kapitel im Inhaltsverzeichnis markieren (die Auswahl selbst ist schon hervorgehoben)
     const ci = chapterAtAxis(data.chapters, a === Infinity ? (selection() ? S.pb.p : tl.length) : a);
-    const actLevel = data.acts.length > 0 && S.act < 0;
-    const cur = actLevel ? actOfChapter(data.acts, ci) : ci;
-    for (const chip of chapterBar.childNodes) {
-      if (!chip.dataset || !chip.classList || typeof chip.classList.toggle !== "function") continue;
-      const idx = Number(chip.dataset.idx);
-      chip.classList.toggle("current", idx === cur && S.chapter < 0 && idx >= 0);
+    const ai = actOfChapter(data.acts, ci);
+    for (const r of tocRows) {
+      const on = (r.kind === "act" && r.idx === ai && S.act !== ai) || (r.kind === "chapter" && r.idx === ci && S.chapter !== ci);
+      if (r.btn.classList && typeof r.btn.classList.toggle === "function") r.btn.classList.toggle("current", on);
     }
   }
 
@@ -614,21 +665,141 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
   function selectChapter(i) {
     if (i < 0 || !data.chapters[i]) return select(-1, -1);
     if (!data.acts.length) return select(-1, i);
+    S.tocBand = 0;
     // das gewählte Kapitel noch einmal: zurück zu seinem Akt (wie im Addon)
     if (S.chapter === i && S.act >= 0) return select(S.act, -1);
     return select(actOfChapter(data.acts, i), i);
   }
 
   function selectAct(n) {
+    S.tocBand = 0; // der Band des gewählten Akts ist aufgeschlagen
     return n >= 0 && data.acts[n] ? select(n, -1) : select(-1, -1);
   }
 
-  // eine Ebene zurück (Esc): Kapitel -> Akt -> Akte; -> true, wenn es etwas zurückzugehen gab
+  // eine Ebene zurück (Esc, wie im Addon): Kapitel -> Akt; der Akt bleibt (zur ganzen Reise führt ihr eigener Eintrag)
   function back() {
     if (S.chapter >= 0 && S.act >= 0) select(S.act, -1);
-    else if (S.act >= 0 || S.chapter >= 0) select(-1, -1);
+    else if (S.chapter >= 0 && !data.acts.length) select(-1, -1);
     else return false;
     return true;
+  }
+
+  // ---------------------------------------------------------------- Inhaltsverzeichnis
+  function tocRow(kind, idx, depth, children, { pressed = false, expanded = null, label, tip, onClick }) {
+    const b = el(doc, "button", "jtoc-btn jtoc-" + kind + (pressed ? " selected" : ""), ...children);
+    b.type = "button";
+    if (b.dataset) b.dataset.idx = String(idx);
+    b.setAttribute("aria-pressed", pressed ? "true" : "false");
+    if (expanded !== null) b.setAttribute("aria-expanded", expanded ? "true" : "false");
+    if (label) b.setAttribute("aria-label", label);
+    if (tip) b.setAttribute("title", tip);
+    b.addEventListener("click", onClick);
+    tocList.appendChild(el(doc, "li", "jtoc-item jtoc-depth-" + depth, b));
+    tocRows.push({ kind, idx, btn: b });
+    return b;
+  }
+
+  const dots = () => el(doc, "span", "jtoc-dots");
+
+  // Wachssiegel mit eingeprägter Zahl: zugeschnittene Addon-Siegel I–XXX, darüber ein gezeichnetes Siegel mit der Zahl
+  function seal(n) {
+    if (n >= 1 && n <= 30) return icon(doc, "act-seal-" + n, "jtoc-seal", [32, 32]);
+    return el(doc, "span", "jtoc-seal jtoc-seal-drawn", roman(n));
+  }
+
+  // Tooltip (nur Text, als title-Attribut): Kennzahlen der früheren Wertekarte
+  function tipLines(L, head, s, via) {
+    const [a, b] = s.levels;
+    const lines = [head];
+    if (a !== null || b !== null) lines.push(t(L, "jLevels", a !== null && b !== null && b > a ? a + "–" + b : a ?? b));
+    if (s.played !== null) lines.push(t(L, "jTipPlayed", fmtDuration(L, s.played)));
+    lines.push(t(L, "jTipFigures", fmtNumber(L, s.quests ?? 0), fmtNumber(L, s.kills ?? 0), fmtNumber(L, s.deaths ?? 0)));
+    if (via && via.length) lines.push(t(L, "via", via.slice(0, 6).map((v) => safeText(v, 40)).join(", ")));
+    lines.push(t(L, "jTipClick"));
+    return lines.join("\n");
+  }
+
+  function chapterRow(L, i, depth) {
+    const c = data.chapters[i];
+    const s = journeyStats(journal, c);
+    const src = journal && Array.isArray(journal.chapters) ? journal.chapters[c.src] : null;
+    const name = t(L, "jTocChapter", roman(c.n), chapterName(c));
+    const meta = s.played !== null && s.played >= 60 ? fmtDuration(L, s.played) : "";
+    const sel = S.chapter === i;
+    tocRow("chapter", i, depth, [el(doc, "span", "jtoc-mark", sel ? "▸" : ""), el(doc, "span", "jtoc-name", name), dots(), el(doc, "span", "jtoc-meta", meta)], {
+      pressed: sel,
+      label: [name, meta, sel && data.acts.length ? t(L, "jChapterAgain") : null].filter(Boolean).join(", "),
+      tip: tipLines(L, name, s, src && Array.isArray(src.via) ? src.via : null),
+      onClick: () => selectChapter(i),
+    });
+  }
+
+  function buildToc() {
+    const L = S.lang;
+    clear(tocList);
+    tocRows = [];
+    toc.setAttribute("aria-label", t(L, "jContents"));
+    setText(doc, tocHead, t(L, "jContents"));
+    // Zusammenfassung „9 Akte · 20 Kapitel · Stufe 1–21 · 1 T. 23 Std.“
+    const whole = journeyStats(journal, null);
+    if (whole.played === null && tl.t1 !== null) whole.played = playedAt(data.played, tl.t1);
+    const [la, lb] = whole.levels;
+    const lv = la !== null || lb !== null ? t(L, "jLevels", la !== null && lb !== null && lb > la ? la + "–" + lb : la ?? lb) : null;
+    const sum = [
+      data.acts.length ? countText(L, data.acts.length, "jActsN1", "jActsN") : null,
+      countText(L, data.chapters.length, "jChaptersN1", "jChaptersN"),
+      lv,
+      whole.played !== null ? fmtDuration(L, whole.played) : null,
+    ].filter(Boolean).join(" · ");
+    setText(doc, tocSum, sum);
+    const noSel = S.act < 0 && S.chapter < 0;
+    tocRow("whole", -1, 0, [el(doc, "span", "jtoc-name", t(L, "jWholeTrip")), dots(), el(doc, "span", "jtoc-meta", lv || "")], {
+      pressed: noSel,
+      label: t(L, "jWholeTrip"),
+      onClick: () => select(-1, -1),
+    });
+    if (!data.acts.length) {
+      // ohne Akte (nur Spur): die Kapitel flach
+      data.chapters.forEach((c, i) => chapterRow(L, i, 0));
+      return;
+    }
+    const bands = contentsBands(data.acts);
+    const single = bands.length <= 1;
+    const curAct = S.act >= 0 ? S.act : data.acts.length - 1; // ohne Auswahl: der aktuelle (letzte) Akt
+    const band = S.tocBand || bandOfAct(bands, curAct);
+    for (const b of bands) {
+      const open = single || b.index === band;
+      if (!single) {
+        const meta = t(L, "jLevels", b.from + "–" + b.to) + " · " + countText(L, b.acts.length, "jActsN1", "jActsN");
+        const name = t(L, "jBand", b.roman);
+        tocRow("band", b.index, 0, [el(doc, "span", "jtoc-name", name), dots(), el(doc, "span", "jtoc-meta", meta)], {
+          expanded: open,
+          label: name + ", " + meta,
+          tip: t(L, "jTipBand"),
+          onClick: () => {
+            S.tocBand = b.index;
+            buildToc();
+            updateInfo();
+          },
+        });
+      }
+      if (!open) continue;
+      for (const ai of b.acts) {
+        const a = data.acts[ai];
+        const openAct = ai === curAct;
+        const name = placeName(L, a.mapID, a.name) || t(L, "jUnderway");
+        const meta = actSubtitle(L, a);
+        const full = actTitle(L, a);
+        tocRow("act", ai, single ? 0 : 1, [seal(a.n), el(doc, "span", "jtoc-name", name), dots(), el(doc, "span", "jtoc-meta", meta)], {
+          pressed: S.act === ai && S.chapter < 0,
+          expanded: openAct,
+          label: full + ", " + meta,
+          tip: tipLines(L, full, journeyStats(journal, null, a), null),
+          onClick: () => selectAct(ai),
+        });
+        if (openAct) for (const ci of a.chapters) chapterRow(L, ci, single ? 0 : 1);
+      }
+    }
   }
 
   function legendItem(art, label, cls) {
@@ -651,52 +822,11 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
         refresh();
       });
     }
-    clear(chapterBar);
-    chapterBar.setAttribute("aria-label", t(L, "jChapters"));
-    const chip = (idx, label, hint) => {
-      const b = el(doc, "button", "subnav-btn chapter-chip" + (S.chapter === idx ? " active" : ""), label);
-      b.type = "button";
-      if (b.dataset) b.dataset.idx = String(idx);
-      b.setAttribute("aria-pressed", S.chapter === idx ? "true" : "false");
-      if (hint) b.setAttribute("aria-label", label + ", " + hint);
-      b.addEventListener("click", () => selectChapter(idx));
-      chapterBar.appendChild(b);
-    };
-    const chapterChip = (i) => {
-      const c = data.chapters[i];
-      const lv = levelLabel(L, c.minLevel, c.maxLevel);
-      chip(i, fmtNumber(L, c.n) + " · " + chapterName(c), [lv, S.chapter === i && S.act >= 0 ? t(L, "jChapterAgain") : null].filter(Boolean).join(", ") || null);
-    };
-    if (!data.acts.length) {
-      // ohne Akte (nur Spur, kein Tagebuch): flache Kapitelleiste wie bisher
-      chip(-1, t(L, "jWholeTrip"), null);
-      data.chapters.forEach((c, i) => chapterChip(i));
-    } else if (S.act < 0) {
-      // oberste Ebene: ganze Reise und die Akte („Akt I · Dun Morogh“, darunter Stufe und Dauer)
-      chapterBar.setAttribute("aria-label", t(L, "jActs"));
-      chip(-1, t(L, "jWholeTrip"), null);
-      data.acts.forEach((a, i) => {
-        const name = actTitle(L, a);
-        const sub = actSubtitle(L, a);
-        const b = el(doc, "button", "subnav-btn chapter-chip act-chip", el(doc, "span", "act-chip-title", name), sub ? el(doc, "span", "act-chip-sub", sub) : null);
-        b.type = "button";
-        if (b.dataset) b.dataset.idx = String(i);
-        b.setAttribute("aria-pressed", "false");
-        b.setAttribute("aria-label", [name, sub, t(L, "jActHint", fmtNumber(L, a.chapters.length))].filter(Boolean).join(", "));
-        b.addEventListener("click", () => selectAct(i));
-        chapterBar.appendChild(b);
-      });
-    } else {
-      // geöffneter Akt: zurück zu den Akten, dann seine Kapitel
-      const a = data.acts[S.act];
-      chapterBar.setAttribute("aria-label", t(L, "jActChapters", roman(a.n)));
-      const bk = el(doc, "button", "subnav-btn chapter-chip back-chip", "← " + t(L, "jBackActs"));
-      bk.type = "button";
-      bk.setAttribute("aria-label", t(L, "jBackActs") + ", " + t(L, "jBackActsHint"));
-      bk.addEventListener("click", () => select(-1, -1));
-      chapterBar.appendChild(bk);
-      for (const i of a.chapters) chapterChip(i);
-    }
+    buildToc();
+    iconsLabel.hidden = S.mode !== "continent";
+    iconsBox.checked = S.showIcons;
+    setText(doc, iconsText, t(L, "jShowIcons"));
+    iconsLabel.setAttribute("title", t(L, "jShowIconsHint"));
     clear(speedBar);
     speedBar.setAttribute("aria-label", t(L, "jSpeedLabel"));
     for (const sp of PB.SPEEDS) {
@@ -730,6 +860,12 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     updateStats();
     updateInfo();
   }
+
+  iconsBox.addEventListener("change", () => {
+    S.showIcons = iconsBox.checked !== false;
+    if (!iconsShown()) showTip(null);
+    draw();
+  });
 
   playBtn.addEventListener("click", () => {
     PB.toggle(S.pb);
@@ -785,7 +921,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
   }
 
   function hoverAt(x, y) {
-    showTip(hitMarker(frameState(), cutAxis(), x, y), x, y);
+    showTip(iconsShown() ? hitMarker(frameState(), cutAxis(), x, y) : null, x, y);
   }
 
   canvas.addEventListener("pointerdown", (e) => {
@@ -908,9 +1044,8 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     root.appendChild(el(doc, "div", "sec-head journey-head", el(doc, "div", "journey-heading", title)));
     root.appendChild(emptyBox);
   } else {
-    root.appendChild(head);
-    root.appendChild(chapterBar);
-    const mainCol = el(doc, "div", "journey-main", frame);
+    // links das Inhaltsverzeichnis, darunter Kennzahlen und Teilen; rechts Kopf (Titel/Kennzahlen der Auswahl) und Karte
+    const mainCol = el(doc, "div", "journey-main", head, frame);
     if (!ctx) frame.appendChild(el(doc, "p", "map-note", t(lang, "jNoCanvas")));
     mainCol.appendChild(playback);
     mainCol.appendChild(info);
@@ -918,7 +1053,7 @@ export function createJourneyView(doc, win, { journal, char, lang }) {
     mainCol.appendChild(notes);
     const aside = el(doc, "div", "journey-aside", statsBox);
     if (share) aside.appendChild(share.element);
-    root.appendChild(el(doc, "div", "journey-body", mainCol, aside));
+    root.appendChild(el(doc, "div", "journey-body", el(doc, "div", "journey-toc", toc), mainCol, aside));
     buildControls();
     syncMap();
     buildControls(); // Kartenname im aria-label
